@@ -67,10 +67,10 @@ Documentos relacionados:
 | Contraseñas | PBKDF2-SHA256, 30.000 iteraciones (calibrado a 10 ms de CPU). | Se mantiene. |
 | Sesiones | Cookie `__Host-`, `HttpOnly`, `Secure`, `SameSite=Strict`. En la base se guarda sólo el hash. Duran 30 días y se cierran al cambiar la contraseña o desactivar al usuario. | Se mantiene. La cookie seguirá atada al dominio exacto. |
 | Fuerza bruta | 5 fallos en 15 minutos bloquean al usuario y la IP. | Se mantiene. |
-| CSRF | Mismo `Origin` + JSON obligatorio + `SameSite=Strict`. | Los formularios públicos (contacto e inscripción) necesitan su propia protección: Turnstile y límite por IP. |
+| CSRF | Mismo `Origin` + JSON obligatorio + `SameSite=Strict`. | Sin cambios: la web pública no envía formularios al servidor (la inscripción abre WhatsApp). |
 | Roles | `admin` y `organizador`. Admin: usuarios, publicación, respaldo, reapertura de temporadas. | Se agrega un rol **`editor`** (sólo contenidos) y permisos por módulo (sección 5). |
 | Cabeceras | CSP estricta en el panel; CSP propia de la vista pública con `frame-ancestors` para Google Sites; HSTS; `nosniff`. | La web pública necesitará una CSP que admita el mapa (Google Maps) y quizás videos incrustados. Se definirá en Fase 7. |
-| Datos personales | La vista pública nunca muestra DNI, teléfono, email ni notas. | Las inscripciones y los mensajes de contacto suman datos personales: acceso sólo desde el panel y aviso de privacidad (Ley 25.326). |
+| Datos personales | La vista pública nunca muestra DNI, teléfono, email ni notas. | Sin datos nuevos: inscripciones y consultas van por WhatsApp, fuera de la web. |
 
 ---
 
@@ -117,10 +117,10 @@ Verificados el 20/11/2026 en la documentación oficial. Hay que revisarlos de nu
 | KV: almacenamiento | 1 GB | ~5.000 imágenes comprimidas. | Bajo. |
 | KV: escrituras | 1000 por día | Cada archivo subido es 1 escritura. | Bajo para el uso de 2–3 organizadores. |
 | KV: lecturas | 100.000 por día | Con caché en Cloudflare, sólo la primera vista de cada imagen lee KV. | Bajo. |
-| Turnstile (antispam de formularios) | Gratuito | Formularios de contacto e inscripción. | Bajo. |
+| Turnstile (antispam de formularios) | Gratuito | No hace falta (sin formularios que guarden datos). Queda disponible si se agregan. | Nulo. |
 | Cron Triggers | 5 por cuenta | Se usa 1. | Bajo. |
 | Archivos estáticos | Ilimitados y gratis | Panel y CSS/JS de la web. | Nulo. |
-| Correo saliente | **No hay envío gratuito general** | Avisos de inscripción: se ven en el panel. Opción a evaluar en la Fase 10: Cloudflare Email Routing envía sin costo a direcciones verificadas, pero requiere el dominio en Cloudflare. | Medio: hay que decidir el canal de aviso. |
+| Correo saliente | No hay envío gratuito general | **No se usa** (decisión del 20/11/2026): las inscripciones y consultas van **sólo por WhatsApp**. | Nulo. |
 
 ---
 
@@ -148,9 +148,10 @@ Detalle completo en [`docs/web-anterior/INVENTARIO.md`](web-anterior/INVENTARIO.
 | Ranking general (vacía) | Se elimina, o se reemplaza por el índice de rankings. |
 | Calendario (imágenes) | Calendario generado desde las fechas de torneos y partidos, más eventos manuales (canchas abiertas, cena de fin de año). |
 | Reglamentos | Página del CMS con el texto actual y, opcionalmente, el PDF descargable. |
-| Cancha abierta · Liga · Premios | Páginas del CMS. **El contenido lo tienen que proveer los organizadores**: hoy no existe en la web. |
-| Formulario de Google | Formulario de contacto propio, con antispam y bandeja en el panel. |
-| ANOTATE! (WhatsApp) | Formulario de inscripción por torneo y categoría, con bandeja en el panel. WhatsApp sigue como alternativa. |
+| Premios | **Por torneo** (decisión: los premios cambian según el torneo). Campo `prize_info` en la página de cada torneo, editable desde el panel. Sin página fija. |
+| Cancha abierta · Liga | Sin páginas fijas (decisión del 20/11/2026). Si hace falta, se publican como novedad o evento del calendario. |
+| Formulario de Google | Se reemplaza por botones de **WhatsApp** e Instagram (decisión: sólo WhatsApp). |
+| ANOTATE! (WhatsApp) | Botón **Inscribirme** en cada torneo: el visitante elige categoría y completa los nombres de la pareja, y se abre WhatsApp con el mensaje ya escrito ("Hola, quiero anotarme al P1 Mallorca 1000, C6: Juan Pérez y Martín Gómez"). No se guarda nada en la web. |
 | Mapa de la sede | Bloque "mapa" en la página de sede o contacto. |
 | Damas | No se publica. |
 
@@ -208,10 +209,15 @@ Relación con lo existente: al cerrar un torneo con fixture, la última fase alc
 
 ### 5.3 Inscripciones y contacto
 
-| Tabla | Campos principales | Notas |
-|---|---|---|
-| `registrations` | `tournament_id`, `category_id`, `player1_name`, `player1_phone`, `player2_name`, `player2_phone`, `email`, `comments`, `status` (nueva, confirmada, en espera, rechazada), `player1_id`/`player2_id` (vinculación posterior), `ip_hash`, `created_at` | Desde el panel se vincula con jugadores existentes y se crea la pareja con un clic. |
-| `contact_messages` | `name`, `email`, `phone`, `message`, `status`, `ip_hash`, `created_at` | Reemplaza al Google Forms. |
+**Sin tablas nuevas** (decisión del 20/11/2026: inscripciones y consultas sólo por WhatsApp). El número de WhatsApp, el texto base del mensaje y el Instagram van en `site_settings`. El formulario público arma el mensaje en el navegador y abre `wa.me`.
+
+Ventajas:
+
+- la web no guarda datos personales de inscriptos;
+- no hay spam que moderar;
+- no hace falta Turnstile ni correo.
+
+Si en el futuro quieren una bandeja de inscripciones en el panel, se agrega una tabla `registrations` sin tocar el resto.
 
 Las tablas nuevas se suman a `BACKUP_TABLES` y a los triggers de `public_version` cuando corresponda.
 
@@ -245,7 +251,7 @@ Las tablas nuevas se suman a `BACKUP_TABLES` y a los triggers de `public_version
 |---|---|
 | Reglamento y textos de la portada | Se copian como páginas del CMS. Son textos de Padel Time y se transcriben sin cambios. |
 | Fixtures, resultados, tablas y rankings **2025** (imágenes) | **Archivo histórico.** Las imágenes originales se suben a la galería de cada torneo 2025, con autorización del dueño del sitio, sin reinterpretarlas. Volver a tipear partidos ya jugados no tiene sentido. |
-| Rankings **2026** vigentes | Desde las **planillas originales** (las imágenes salen de planillas de Google), con el importador de Excel ya existente. Si no hay planillas, se reconstruyen con un ajuste inicial por jugador, como en la Fase 4. |
+| Rankings **2026** vigentes | **Planillas recibidas (C5, C6, C7, C8)**, analizadas en la sección 11. Se importan con el importador existente al poner en marcha la base de producción, como saldo inicial de la temporada 2026. |
 | Torneos 2026 en curso (Paris Major 2000, …) | Se cargan como torneos con fixture a partir de la Fase 9. Mientras tanto, siguen en Google Sites. |
 | Flyers e imágenes de la portada | Se suben a la galería con autorización. |
 | Google Forms y mapa | Se reemplazan por formulario propio y bloque de mapa. Las respuestas viejas quedan en la cuenta de Google del dueño. |
@@ -268,14 +274,14 @@ Las tablas nuevas se suman a `BACKUP_TABLES` y a los triggers de `public_version
 | 3 | **Respaldo de archivos de KV** (el respaldo `.sql` no los incluye) | Media | Medio | Exportación de la galería a `.zip` desde el panel (paginada) y `wrangler kv` documentado. Además, se conservan los originales que suben los organizadores. |
 | 4 | **Mudar el panel a `/admin`** rompe marcadores y direcciones guardadas | Alta | Bajo | Redirecciones automáticas de las rutas viejas y pruebas de navegador de cada redirección. |
 | 5 | **Inyección de código (XSS)** desde el CMS | Media | Alto | Bloques tipados validados con Zod, sin HTML libre, escape en todas las plantillas, CSP estricta y pruebas de escape (ya existe el patrón). |
-| 6 | **Spam en formularios públicos** | Alta | Medio | Turnstile (gratis), límite por IP, campo trampa y moderación en el panel. |
-| 7 | **Datos personales** de inscripciones y contacto | Media | Alto | Sólo en el panel, nunca en páginas públicas. Hash de IP en lugar de la IP. Política de privacidad. Borrado de mensajes viejos opcional. |
+| 6 | **Spam en formularios públicos** | Baja | Bajo | Ya no aplica: no hay formularios que guarden datos. La inscripción abre WhatsApp. |
+| 7 | **Datos personales** | Baja | Medio | La web no guarda datos de inscriptos (van por WhatsApp). Los datos de jugadores siguen sólo en el panel, como hoy. |
 | 8 | **CPU de 10 ms** al calcular tablas o llaves de categorías grandes | Baja | Medio | Cálculo puro y eficiente, cacheado por versión. Medición en las pruebas. |
 | 9 | **Fixtures con reglas particulares** (Master: 1.º A vs 4.º B; C6 dividida; empates) | Alta | Medio | Desempates configurables por fase. Generador de cruces con edición manual de cada partido. Pruebas con los formatos reales del reglamento. |
 | 10 | **Conflictos de edición simultánea** de resultados de partidos | Media | Bajo | Control de versión por partido (rechazar si cambió desde que se abrió) y auditoría. |
 | 11 | **Cambio de DNS** (posible corte de la web o del correo del dominio) | Baja | Alto | Inventario previo de registros, cambio en horario de bajo uso, Google Sites como plan B, y sólo con autorización. |
 | 12 | **SEO:** pérdida de posicionamiento al cambiar direcciones | Media | Medio | Redirecciones 301 completas, `sitemap.xml`, títulos y descripciones por página. |
-| 13 | **Contenido faltante** (Premios, Liga, Cancha abierta no existen hoy) | Alta | Medio | Las páginas se crean vacías en borrador. Los organizadores aportan los textos y nada vacío se publica. |
+| 13 | **Contenido faltante** | Baja | Bajo | Resuelto: Premios se cargan por torneo; Liga y Cancha abierta no llevan páginas fijas. |
 | 14 | **Dependencia de una sola cuenta** (Cloudflare, Google) | Media | Alto | Cuenta de Cloudflare con correo institucional y 2FA. Respaldos fuera de Cloudflare. |
 | 15 | **Regresiones** en lo que ya funciona | Media | Alto | Ningún módulo nuevo modifica el motor de puntuación. Las 172 + 26 pruebas corren en cada fase y se suman pruebas nuevas por módulo. |
 
@@ -350,25 +356,25 @@ Objetivo: tener la estructura de la web oficial funcionando con contenido fijo, 
    - Satélites/Americanos con su resultado final (módulo actual, sin fixture).
 6. Pruebas con los formatos reales del reglamento: Open 1000, Challenger 500, Master Final 2000.
 
-### Fase 10 · Inscripciones, contacto, histórico y redirecciones
+### Fase 10 · Inscripciones por WhatsApp, histórico y redirecciones
 
-1. Migración 0008: `registrations`, `contact_messages`.
-2. **Formularios públicos:**
-   - inscripción por torneo y categoría (pareja, teléfonos, comentarios);
-   - contacto;
-   - antispam con Turnstile, límite por IP, campo trampa y aviso de privacidad.
-3. **Bandeja en el panel:** confirmar, poner en espera o rechazar; vincular con jugadores; crear la pareja en el torneo con un clic; exportar a Excel.
-4. **Avisos a los organizadores:** contador en el panel. Decidir si además se usa correo (Email Routing de Cloudflare, gratis hacia direcciones verificadas y con el dominio en Cloudflare) o se mantiene WhatsApp.
-5. **Histórico 2025:** galerías de imágenes por torneo, con autorización. **Rankings 2026:** desde las planillas originales con el importador existente.
+1. **Inscribirme por WhatsApp:**
+   - en cada torneo con inscripción abierta, el visitante elige categoría y escribe los nombres de la pareja;
+   - se abre WhatsApp con el mensaje armado hacia el número de Padel Time, configurable en el panel;
+   - funciona igual en la PC (WhatsApp Web) y en el celular;
+   - no se guarda nada en el servidor.
+2. **Contacto:** botones de WhatsApp e Instagram en el pie y en la página de sede.
+3. **Rankings 2026:** importación de las planillas C5–C8 (sección 11) en la base de producción, con verificación de totales contra la planilla. Opcional: el detalle por torneo (sección 11.3).
+4. **Histórico 2025:** galerías de imágenes por torneo, con autorización.
 6. **Redirecciones 301** de las 268 direcciones de Google Sites, generadas desde el inventario CSV y con prueba automática de cada una.
 7. **SEO:** títulos, descripciones, Open Graph para compartir en WhatsApp e Instagram, y `sitemap.xml` completo.
 
 ### Fase 11 · Calidad, carga de contenido y salida a producción
 
 1. **Auditoría integral:** seguridad (cabeceras, permisos por rol, inyección, formularios), accesibilidad (contraste, teclado, textos alternativos), rendimiento (peso de páginas, Lighthouse en celular) y pruebas de punta a punta de todos los flujos.
-2. **Carga de contenido real** con los organizadores: textos de Premios, Liga y Cancha abierta, imágenes, torneos en curso.
+2. **Carga de contenido real** con los organizadores: premios de cada torneo, imágenes y torneos en curso.
 3. **Ensayo de recuperación:** restaurar base y galería en un entorno de prueba.
-4. **Manual de operación ampliado:** contenidos, fixtures e inscripciones.
+4. **Manual de operación ampliado:** contenidos, fixtures y configuración de WhatsApp.
 5. **Salida a producción, sólo con autorización:**
    - despliegue;
    - pruebas en `workers.dev`;
@@ -393,12 +399,59 @@ Sólo lo indispensable y sin cambios visibles:
 
 No hay migraciones nuevas ni cambios en el código de la app: el esquema y el comportamiento son idénticos a la Fase 5B.
 
-## 10. Decisiones pendientes para los organizadores
+## 10. Decisiones de los organizadores (20/11/2026)
 
-1. **Almacenamiento de imágenes:**
-   - **KV** (1 GB, sin tarjeta), recomendado para empezar;
-   - **R2** (10 GB, requiere registrar una tarjeta en Cloudflare aunque no se cobre dentro del límite).
-2. **Avisos de inscripción:** sólo en el panel, por correo (requiere el dominio en Cloudflare) o por WhatsApp manual.
-3. **Contenido de Premios, Liga y Cancha abierta:** hoy no existe en la web; hay que redactarlo.
-4. **Planillas originales** de los rankings y fixtures 2026: con ellas, la migración es exacta.
-5. **Autorización y acceso** para usar las imágenes de Google Sites y, al final, para cambiar los DNS del dominio.
+| Tema | Decisión | Efecto en el plan |
+|---|---|---|
+| Almacenamiento de imágenes | "Como te parezca mejor" → **Workers KV** (1 GB gratis, sin tarjeta). | Fase 8. La interfaz `MediaStore` permite pasar a R2 más adelante si hiciera falta. |
+| Avisos de inscripción | **Sólo por WhatsApp.** | Sin correo, sin bandeja ni tablas de inscripciones. El botón *Inscribirme* arma el mensaje y abre WhatsApp (Fase 10). |
+| Premios, Liga, Cancha abierta | **No hacen falta páginas fijas**: los premios cambian según el torneo. | Premios por torneo (`prize_info`). Liga y Cancha abierta, sin páginas. |
+| Planillas de rankings 2026 | **Enviadas:** Caballeros C5, C6, C7 y C8. | Analizadas en la sección 11. |
+
+Quedan pendientes:
+
+- la autorización para usar las imágenes de Google Sites y, al final, para cambiar los DNS del dominio;
+- las dos consultas de la sección 11.4.
+
+## 11. Rankings 2026: análisis de las planillas recibidas
+
+Las planillas **no se guardaron en el repositorio**, porque tienen nombres de personas. Se analizaron localmente y no se importaron a ninguna base: la base de producción todavía no existe.
+
+### 11.1 Consistencia
+
+| Categoría | Jugadores | Puntos totales | Suma por torneo = total | Orden de puestos | Nombres repetidos |
+|---|---:|---:|---|---|---|
+| C5 | 81 | 90.540 | ✔ las 81 filas | ✔ | No |
+| C6 | 40 | 145.830 | ✔ las 40 filas | ✔ | No |
+| C7 | 20 | 51.800 | ✔ las 20 filas | ✔ | No |
+| C8 | 100 | 69.625 | ✔ las 100 filas | ✔ | No |
+| **Total** | **241** | **357.795** | | | |
+
+### 11.2 Prueba con el importador existente
+
+Las cuatro planillas se pasaron por el **mismo código** del asistente *Importar rankings*. Sin ningún ajuste:
+
+- detecta la fila de títulos;
+- elige las columnas `PUESTO`, `JUGADOR` y la de **puntos totales** (`PUNTOS` o `PUNTOS TOTALES`), aunque haya muchas columnas "PUNTOS 1, 2, 3…";
+- toma las 241 filas sin omitir ninguna, con la misma suma que el archivo.
+
+Con 241 filas están muy lejos del límite de unas 1000 filas por importación del plan gratuito, así que se pueden importar las cuatro de una vez.
+
+### 11.3 Lo que muestran las columnas por torneo
+
+| Hallazgo | Implicancia |
+|---|---|
+| C7 y C8 nombran los torneos: P1 AUS, P1 MALL, P2 360, P1 VAL, MAYOR QT, MAYOR PAR, TEAM CP, CANCHA AB y MASTER FINAL, cada uno con partidos jugados (PJ) y puntos. C5 y C6 usan títulos genéricos ("PJ 1", "PUNTOS 1"…). | Para guardar el detalle por torneo en C5 y C6 haría falta saber qué torneo es cada columna. |
+| Los puntos de un torneo **no son sólo los de la instancia**: crecen con los partidos jugados. Por ejemplo, P2 360 con 27 partidos suma 2100 puntos. | La puntuación real incluye puntos por partido. El motor actual ya lo soporta (bonus por partido jugado o ganado, configurable por torneo). Antes de la Fase 9 conviene confirmar la regla exacta de cada tipo de torneo. |
+| **Cancha abierta** y **TEAM CP** también otorgan puntos. | Se pueden cargar como torneos tipo americano (sólo resultado final) o como ajustes con motivo. A definir antes de la Fase 9. |
+| La columna MASTER FINAL está vacía. | Coherente: el Master se juega a fin de año. |
+
+**Recomendación para la importación:**
+
+- importar los **totales** como saldo inicial 2026, como se diseñó en la Fase 4 ("sin inventar historia");
+- **opcionalmente**, importar además el detalle por torneo, como un movimiento por columna con el nombre del torneo. Así el historial público de cada jugador muestra de dónde salen sus puntos. Requiere los nombres de las columnas de C5 y C6, y se haría en la Fase 10.
+
+### 11.4 Consultas
+
+1. **¿Las planillas están completas?** C7 tiene exactamente 20 jugadores, C6 40 y C8 100: números redondos que podrían ser sólo los primeros puestos. Si hay más jugadores, conviene importar la planilla entera.
+2. **Agustín Barrera** figura en C6 (1660 puntos) y en C5 (110). ¿Cuál es su categoría principal? El sistema lo mantiene como un solo jugador con puntos en ambos rankings, pero la categoría principal define dónde suma de ahora en adelante.
