@@ -3,7 +3,7 @@ import { seasonSchema, seasonStatusSchema } from "@shared/schemas";
 import { SEASON_STATUS_LABEL, type SeasonStatus } from "@shared/constants";
 import type { Season } from "@shared/types";
 import type { AppEnv } from "../types";
-import { badRequest, conflict, notFound } from "../lib/errors";
+import { badRequest, conflict, HttpError, notFound } from "../lib/errors";
 import { parseBody, parseId } from "../lib/validate";
 import { auditStmt } from "../lib/audit";
 
@@ -98,6 +98,10 @@ seasonRoutes.patch("/:id/status", async (c) => {
   const db = c.env.DB;
   const season = await getSeason(db, id);
   if (season.status === status) return c.json({ item: season });
+  // Reabrir una temporada cerrada habilita a modificar su historial: sólo un administrador.
+  if (season.status === "cerrada" && c.get("user").role !== "admin") {
+    throw new HttpError(403, "sin_permiso", "Sólo un administrador puede reabrir una temporada cerrada.");
+  }
   if (status === "cerrada") {
     const open = await db
       .prepare("SELECT COUNT(*) AS n FROM tournaments WHERE season_id = ? AND status IN ('programado', 'en_curso')")
@@ -124,6 +128,12 @@ seasonRoutes.delete("/:id", async (c) => {
   const season = await getSeason(db, id);
   const used = await db.prepare("SELECT COUNT(*) AS n FROM tournaments WHERE season_id = ?").bind(id).first<{ n: number }>();
   if ((used?.n ?? 0) > 0) throw conflict("La temporada tiene torneos cargados y no puede eliminarse");
+  // Saldos importados o ajustes manuales también son historial: nunca se borran.
+  const history = await db
+    .prepare("SELECT (SELECT COUNT(*) FROM point_movements WHERE season_id = ?1) + (SELECT COUNT(*) FROM initial_balances WHERE season_id = ?1) AS n")
+    .bind(id)
+    .first<{ n: number }>();
+  if ((history?.n ?? 0) > 0) throw conflict("La temporada tiene puntos registrados (saldos importados o ajustes) y no puede eliminarse.");
   await db.batch([
     db.prepare("UPDATE player_category_changes SET season_id = NULL WHERE season_id = ?").bind(id),
     db.prepare("DELETE FROM seasons WHERE id = ?").bind(id),

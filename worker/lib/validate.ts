@@ -3,18 +3,20 @@ import type { z } from "zod";
 import { badRequest, HttpError, zodToFields } from "./errors";
 
 const MAX_BODY_BYTES = 64 * 1024;
+/** Límite para importaciones de rankings (hasta 3000 filas con jugadores nuevos). */
+export const IMPORT_MAX_BODY_BYTES = 2 * 1024 * 1024;
 
-export async function parseBody<S extends z.ZodType>(c: Context, schema: S): Promise<z.output<S>> {
+export async function parseBody<S extends z.ZodType>(c: Context, schema: S, maxBytes = MAX_BODY_BYTES): Promise<z.output<S>> {
   const type = c.req.header("content-type") ?? "";
   if (!type.toLowerCase().startsWith("application/json")) {
     throw new HttpError(415, "tipo_no_soportado", "Se esperaba JSON");
   }
   const length = Number(c.req.header("content-length") ?? 0);
-  if (length > MAX_BODY_BYTES) throw new HttpError(413, "demasiado_grande", "La solicitud es demasiado grande");
+  if (length > maxBytes) throw new HttpError(413, "demasiado_grande", "La solicitud es demasiado grande");
   let raw: unknown;
   try {
     const text = await c.req.text();
-    if (text.length > MAX_BODY_BYTES) throw new HttpError(413, "demasiado_grande", "La solicitud es demasiado grande");
+    if (text.length > maxBytes) throw new HttpError(413, "demasiado_grande", "La solicitud es demasiado grande");
     raw = JSON.parse(text);
   } catch (e) {
     if (e instanceof HttpError) throw e;

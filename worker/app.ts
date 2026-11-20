@@ -17,6 +17,7 @@ import { movementRoutes, playerPointsRoutes } from "./routes/movements";
 import { directoryRoutes, importRoutes } from "./routes/imports";
 import { rankingImportRoutes } from "./routes/rankingImports";
 import { publicationRoutes } from "./routes/publication";
+import { backupRoutes } from "./routes/backup";
 
 export const app = new Hono<AppEnv>().basePath("/api");
 
@@ -30,6 +31,7 @@ app.use("*", async (c, next) => {
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "DENY");
   c.header("Referrer-Policy", "same-origin");
+  if (new URL(c.req.url).protocol === "https:") c.header("Strict-Transport-Security", "max-age=31536000");
 });
 
 // Protección CSRF: toda operación que modifica datos debe venir del mismo origen.
@@ -78,3 +80,4 @@ app.route("/movements", movementRoutes);
 app.route("/dashboard", dashboardRoutes);
 app.route("/ranking-imports", rankingImportRoutes);
 app.route("/publication", publicationRoutes);
+app.route("/backup", backupRoutes);

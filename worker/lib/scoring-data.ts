@@ -138,6 +138,21 @@ export async function loadCreditedRows(db: D1Database, creditId: number) {
   return results.map((r) => ({ playerId: r.player_id, name: r.name, code: r.code, categoryName: r.category_name, points: r.points, stageLabel: r.stage_label }));
 }
 
+/** Categoría en la que cada jugador recibió los puntos de la acreditación vigente del torneo. */
+async function loadCreditedCategories(db: D1Database, tournamentId: number) {
+  const { results } = await db
+    .prepare(
+      `SELECT m.player_id, m.category_id, c.name AS category_name
+         FROM point_movements m
+         JOIN tournament_credits cr ON cr.id = m.credit_id AND cr.status = 'vigente'
+         JOIN categories c ON c.id = m.category_id
+        WHERE m.tournament_id = ? AND m.kind = 'acreditacion'`,
+    )
+    .bind(tournamentId)
+    .all<{ player_id: number; category_id: number; category_name: string }>();
+  return new Map(results.map((r) => [r.player_id, { categoryId: r.category_id, categoryName: r.category_name }]));
+}
+
 export interface ComputedPreview {
   tournament: TournamentCtx;
   scoring: ScoringConfig | null;
@@ -148,8 +163,33 @@ export interface ComputedPreview {
 /** Calcula la previsualización con los datos actuales de la base. */
 export async function buildPreview(db: D1Database, tournamentId: number): Promise<ComputedPreview> {
   const tournament = await loadTournamentCtx(db, tournamentId);
-  const [scoring, teams] = await Promise.all([loadScoring(db, tournamentId), loadTeams(db, tournamentId)]);
+  const [scoring, teams, credited] = await Promise.all([
+    loadScoring(db, tournamentId),
+    loadTeams(db, tournamentId),
+    loadCreditedCategories(db, tournamentId),
+  ]);
+  // Quien ya recibió puntos de este torneo los conserva en la categoría donde se acreditaron,
+  // aunque después haya cambiado de categoría principal (ascenso/descenso): una corrección
+  // del torneo no debe mudar puntos históricos a otro ranking.
+  const moved: string[] = [];
+  for (const team of teams) {
+    for (const p of team.players) {
+      const prev = credited.get(p.id);
+      if (prev && prev.categoryId !== p.mainCategoryId) {
+        moved.push(`${p.firstName} ${p.lastName} (acreditado en ${prev.categoryName}, hoy en ${p.mainCategoryName})`);
+        p.mainCategoryId = prev.categoryId;
+        p.mainCategoryName = prev.categoryName;
+      }
+    }
+  }
   const preview = computePreview(scoring, teams, tournament);
+  if (moved.length) {
+    preview.issues.push({
+      level: "warning",
+      code: "categoria_acreditada",
+      message: `Cambiaron de categoría principal después de la acreditación: ${moved.join(", ")}. Sus puntos de este torneo se mantienen en la categoría donde se acreditaron.`,
+    });
+  }
   const hash = await sha256Hex(`${tournamentId}|${tournament.seasonId}|${previewFingerprint(preview.rows)}`);
   return { tournament, scoring, preview, hash };
 }

@@ -17,6 +17,7 @@ import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "@/components/
 import { SeasonStatusBadge } from "@/components/ui/badges";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { useAuth } from "@/auth/AuthContext";
 
 function useInvalidate() {
   const qc = useQueryClient();
@@ -96,12 +97,14 @@ type Action = { season: Season; kind: "status"; status: SeasonStatus } | { seaso
 
 const ACTION_TEXT: Record<SeasonStatus, { title: string; message: string; label: string }> = {
   activa: { title: "Activar temporada", message: "Pasará a ser la temporada vigente. Sólo puede haber una activa a la vez.", label: "Activar" },
-  cerrada: { title: "Cerrar temporada", message: "Una vez cerrada no se podrán crear ni modificar sus torneos. Podés reabrirla si hace falta corregir algo.", label: "Cerrar temporada" },
-  planificada: { title: "Reabrir temporada", message: "La temporada volverá a estado planificada y se podrán modificar sus torneos.", label: "Reabrir" },
+  cerrada: { title: "Cerrar temporada", message: "Una vez cerrada no se podrán crear ni modificar sus torneos ni sus puntos: el ranking queda como histórico. Sólo un administrador puede reabrirla.", label: "Cerrar temporada" },
+  planificada: { title: "Reabrir temporada", message: "La temporada volverá a estado planificada y se podrán modificar sus torneos y puntos históricos. Hacelo sólo para corregir un error y volvé a cerrarla al terminar.", label: "Reabrir" },
 };
 
 export function SeasonsPage() {
   const seasons = useSeasons();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const invalidate = useInvalidate();
   const toast = useToast();
   const [editing, setEditing] = useState<Season | null | "new">(null);
@@ -163,7 +166,7 @@ export function SeasonsPage() {
                   {s.status === "activa" && (
                     <Button size="sm" variant="ghost" icon={<Lock className="size-3.5" />} onClick={() => setAction({ season: s, kind: "status", status: "cerrada" })}>Cerrar</Button>
                   )}
-                  {s.status === "cerrada" && (
+                  {s.status === "cerrada" && isAdmin && (
                     <Button size="sm" variant="ghost" icon={<LockOpen className="size-3.5" />} onClick={() => setAction({ season: s, kind: "status", status: "planificada" })}>Reabrir</Button>
                   )}
                   {s.tournamentCount === 0 && s.status !== "activa" && (

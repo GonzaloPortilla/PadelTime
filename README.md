@@ -4,7 +4,16 @@ Aplicación web para gestionar los torneos y rankings de Padel Time: jugadores, 
 
 **Costo operativo mensual: USD 0.** Corre íntegramente en el plan gratuito de Cloudflare (Workers + D1 + Static Assets), sin servicios pagos.
 
-> Estado: **Fase 5A (rediseño visual con la identidad de Padel Time)**. Sistema de diseño en [`docs/DISENO.md`](docs/DISENO.md).
+> Estado: **Fase 5B (revisión integral y preparación para producción)**. Lista para publicar; todavía **no está publicada**.
+>
+> | Documento | Para quién |
+> |---|---|
+> | [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Puesta en producción paso a paso (configuración, variables, migraciones, verificación) |
+> | [`docs/RESPALDO.md`](docs/RESPALDO.md) | Respaldo y recuperación ante fallos |
+> | [`docs/MANUAL.md`](docs/MANUAL.md) | Manual de operación para los organizadores |
+> | [`docs/LIMITACIONES.md`](docs/LIMITACIONES.md) | Limitaciones conocidas |
+> | [`docs/PUBLICACION.md`](docs/PUBLICACION.md) | Rankings públicos e integración con Google Sites |
+> | [`docs/DISENO.md`](docs/DISENO.md) · [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) · [`docs/OCR.md`](docs/OCR.md) | Diseño visual, arquitectura técnica y reconocimiento de cuadros |
 
 ---
 
@@ -66,6 +75,19 @@ Hay más detalle, con resultados medidos y limitaciones, en [`docs/OCR.md`](docs
 La integración con Google Sites está explicada paso a paso en [`docs/PUBLICACION.md`](docs/PUBLICACION.md).
 
 ---
+
+### Fase 5B: revisión integral y producción
+
+| Área | Qué se agregó o corrigió |
+|---|---|
+| **Integridad** | Los puntos ya acreditados se quedan en la categoría donde se ganaron aunque el jugador cambie de categoría y después se corrija el torneo. No se puede cambiar la rama de un jugador con historial. No se borran temporadas, categorías ni divisiones con puntos (antes el error era genérico). Reabrir una temporada cerrada es exclusivo de administradores. |
+| **Importación grande** | Se corrigió el rechazo ("solicitud demasiado grande") de rankings de más de ~350 filas. Ahora admite hasta 3000, con aviso para archivos de más de 1000. |
+| **Respaldo** | Pantalla **Respaldo** (sólo administradores): descarga un `.sql` con toda la base, restaurable con `wrangler` en una base nueva. Hay prueba automática de restauración completa. |
+| **Mantenimiento** | Tarea diaria gratuita (Cron Trigger) que borra sesiones vencidas e intentos de ingreso viejos. |
+| **Rendimiento** | La carga inicial bajó de 225 KB a 133 KB comprimidos: las pantallas pesadas se descargan al abrirlas. |
+| **Seguridad** | HSTS en la app, la API y las páginas públicas. Sin vulnerabilidades conocidas en las dependencias (`npm audit`). |
+| **Producción** | `npm run deploy` verifica la configuración antes de publicar (`npm run preflight`). Guías de despliegue, respaldo, operación y limitaciones. |
+| **Pruebas** | Integridad de puntuaciones (12), respaldo y restauración (5), importación grande, y circuito completo de punta a punta en PC y en celular. |
 
 ## Stack
 
@@ -131,11 +153,15 @@ Tus jugadores, torneos y usuarios se conservan. `npm install` también copia a `
 | `npm run typecheck` | Verificación de tipos de todo el proyecto. |
 | `npm run user:create -- …` | Crea un organizador o resetea su contraseña (ver más abajo). |
 | `npm run db:migrate:local` / `db:migrate:remote` | Aplica migraciones a la base local o a producción. |
+| `npm run preflight` | Verifica la configuración de producción (se ejecuta solo antes de `deploy`). |
+| `npm run db:backup:remote` | Exporta la base de producción a `respaldo-padel-time.sql` (ver `docs/RESPALDO.md`). |
 | `npm run cf-typegen` | Regenera los tipos de bindings del Worker. |
 
 ---
 
 ## Despliegue en Cloudflare (gratis)
+
+Guía completa, con verificación posterior, dominio propio y actualización: [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md). Resumen:
 
 1. Creá una cuenta gratuita en Cloudflare e iniciá sesión desde la terminal:
    ```bash
@@ -182,7 +208,8 @@ El segundo comando resetea la contraseña de un usuario existente: también cier
 | D1 escrituras | 100.000 filas/día | Muy por debajo. Las sesiones se refrescan como máximo cada 12 h para ahorrar escrituras. |
 | D1 almacenamiento | 5 GB | Años de datos ocupan pocos MB. |
 | D1 consultas por request | 50 (y 100 parámetros por consulta) | Las acreditaciones, correcciones y cargas masivas usan una sola sentencia con `json_each`, sin importar el tamaño del torneo. Ninguna operación supera las ~15 consultas. |
-| Tamaño del Worker | 3 MB | ~110 KB comprimido. |
+| Tamaño del Worker | 3 MB | ~113 KB comprimido. |
+| Cron Triggers | 5 por cuenta | 1 (limpieza diaria de sesiones). |
 | Assets estáticos | 25 MB por archivo, 20.000 archivos | 20 archivos; el mayor (motor de OCR) pesa ≈4 MB. El OCR no consume CPU del Worker: corre en el navegador. |
 
 Si se supera un límite diario, Cloudflare **bloquea temporalmente** las operaciones hasta las 00:00 UTC. **No genera cargos**: el plan gratuito no tiene facturación por excedente.
@@ -199,6 +226,10 @@ Si se supera un límite diario, Cloudflare **bloquea temporalmente** las operaci
 - **Cabeceras:** CSP estricta (`'wasm-unsafe-eval'` sólo para compilar el WebAssembly del OCR; sin scripts externos), `X-Frame-Options: DENY`, `nosniff`, `noindex`, y `no-store` en la API.
 - **Vista pública:** `/publico/*` es una app aparte del panel. No lee cookies ni sesiones y sólo consulta datos publicables (nunca DNI, teléfono, email, notas ni motivos de ajustes). Escapa todo el HTML. Sólo permite que la incrusten Google Sites y el dominio propio (`frame-ancestors`, configurable en `PUBLIC_FRAME_ANCESTORS`). El buscador ignora términos con números para que no se pueda consultar por documento.
 - **SQL:** todas las consultas son parametrizadas.
+- **HSTS** en HTTPS (app, API y páginas públicas).
+- **Permisos sensibles sólo para administradores:** usuarios, publicación web, respaldo de la base y reapertura de temporadas cerradas.
+- **Respaldo:** la descarga queda registrada en la auditoría. El archivo es confidencial (ver `docs/RESPALDO.md`).
+- **Mantenimiento automático:** una tarea diaria borra sesiones vencidas e intentos de ingreso viejos.
 
 ---
 

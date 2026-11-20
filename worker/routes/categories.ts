@@ -162,7 +162,9 @@ categoryRoutes.delete("/:id", async (c) => {
     .prepare(
       `SELECT (SELECT COUNT(*) FROM players WHERE main_category_id = ?1)
             + (SELECT COUNT(*) FROM tournaments WHERE category_id = ?1)
-            + (SELECT COUNT(*) FROM player_category_changes WHERE from_category_id = ?1 OR to_category_id = ?1) AS n`,
+            + (SELECT COUNT(*) FROM player_category_changes WHERE from_category_id = ?1 OR to_category_id = ?1)
+            + (SELECT COUNT(*) FROM point_movements WHERE category_id = ?1)
+            + (SELECT COUNT(*) FROM initial_balances WHERE category_id = ?1) AS n`,
     )
     .bind(id)
     .first<{ n: number }>();
@@ -217,8 +219,15 @@ divisionRoutes.delete("/:id", async (c) => {
   const id = parseId(c.req.param("id"), "La división");
   const db = c.env.DB;
   const division = await getDivision(db, id);
-  const used = await db.prepare("SELECT COUNT(*) AS n FROM tournaments WHERE division_id = ?").bind(id).first<{ n: number }>();
-  if ((used?.n ?? 0) > 0) throw badRequest("La división tiene torneos asociados. Desactivala en lugar de eliminarla.");
+  const used = await db
+    .prepare(
+      `SELECT (SELECT COUNT(*) FROM tournaments WHERE division_id = ?1)
+            + (SELECT COUNT(*) FROM point_movements WHERE division_id = ?1)
+            + (SELECT COUNT(*) FROM initial_balances WHERE division_id = ?1) AS n`,
+    )
+    .bind(id)
+    .first<{ n: number }>();
+  if ((used?.n ?? 0) > 0) throw badRequest("La división tiene torneos o puntos asociados. Desactivala en lugar de eliminarla.");
   await db.batch([
     db.prepare("DELETE FROM divisions WHERE id = ?").bind(id),
     auditStmt(db, c.get("user").id, "eliminar", "division", id, `Eliminó la división ${division.name}`),

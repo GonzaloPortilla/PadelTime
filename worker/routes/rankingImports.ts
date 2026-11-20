@@ -8,7 +8,7 @@ import type {
 } from "@shared/types";
 import type { AppEnv } from "../types";
 import { conflict, notFound } from "../lib/errors";
-import { parseBody, parseId } from "../lib/validate";
+import { IMPORT_MAX_BODY_BYTES, parseBody, parseId } from "../lib/validate";
 import { auditStmt } from "../lib/audit";
 import type { z } from "zod";
 
@@ -237,7 +237,7 @@ export const rankingImportRoutes = new Hono<AppEnv>();
 
 /** Vista previa: valida sin escribir nada. */
 rankingImportRoutes.post("/preview", async (c) => {
-  const input = await parseBody(c, rankingImportSchema);
+  const input = await parseBody(c, rankingImportSchema, IMPORT_MAX_BODY_BYTES);
   const { preview } = await analyze(c.env.DB, input);
   return c.json(preview);
 });
@@ -245,7 +245,7 @@ rankingImportRoutes.post("/preview", async (c) => {
 /** Confirma la importación: todo en una sola transacción (batch). */
 rankingImportRoutes.post("/", async (c) => {
   const db = c.env.DB;
-  const parsed = await parseBody(c, rankingImportSchema);
+  const parsed = await parseBody(c, rankingImportSchema, IMPORT_MAX_BODY_BYTES);
   const { preview, input } = await analyze(db, parsed);
   if (!preview.ok) {
     const first = preview.issues.find((i) => i.level === "error")!;

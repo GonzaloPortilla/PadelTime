@@ -180,6 +180,16 @@ Excel/CSV ─► lectura en el navegador (src/rankingImport/parse) ─► mapeo 
   - Caché: clave = URL + `public_version`, en memoria del isolate y en la Cache API, con `ETag` y respuesta 304. Triggers sobre movimientos, acreditaciones, jugadores, categorías, divisiones, temporadas, torneos y configuración incrementan la versión: la web nunca muestra datos viejos.
 - Detalle de la integración con Google Sites: [`docs/PUBLICACION.md`](PUBLICACION.md).
 
+## 2 quinquies. Producción (Fase 5B)
+
+- **Categoría acreditada:** `buildPreview` toma, para cada jugador que ya recibió puntos en la acreditación vigente, la categoría de ese movimiento y no la principal actual. Una corrección nunca muda puntos históricos de ranking. Si cambió, se muestra el aviso `categoria_acreditada`.
+- **Historial protegido:** no se borran temporadas, categorías ni divisiones con `point_movements` o `initial_balances`. No se cambia la rama de un jugador con parejas o movimientos. Reabrir una temporada cerrada exige rol admin.
+- **Respaldo (`/api/backup`, sólo admin):** `POST /start` devuelve conteos y registra la descarga en la auditoría. `GET /:tabla?after=<rowid>` devuelve páginas de 1000 filas de una lista fija de 20 tablas (`shared/backup.ts`). El navegador arma el `.sql` (`dumpHeader` + `dumpPage`, una sentencia por línea, saltos de línea codificados con `char(10)`), para no exceder los 10 ms de CPU por solicitud.
+- **Restauración:** sobre una base nueva con migraciones. El encabezado vacía las tablas sembradas por migraciones (plantillas y configuración).
+- **Cron diario** (`scheduled` en `worker/index.ts`, `worker/lib/maintenance.ts`): borra sesiones vencidas e intentos de ingreso de más de 24 h.
+- **Tamaño de solicitudes:** 64 KB en general; 2 MB para la importación de rankings (`IMPORT_MAX_BODY_BYTES`).
+- **Carga diferida:** las pantallas pesadas (torneo con OCR, importación, publicación, respaldo, rankings, plantillas, movimientos, usuarios) son chunks separados (`React.lazy`).
+
 ## 3. API
 
 Todas las respuestas son JSON. Los errores tienen la forma `{ error: { code, message, fields? } }`, con los mensajes en español.
@@ -203,6 +213,7 @@ Todas las respuestas son JSON. Los errores tienen la forma `{ error: { code, mes
 | `GET /api/players/directory` · `POST /api/tournaments/:id/import` · `GET /api/tournaments/:id/imports` | Importación de cuadros (Fase 3) |
 | `POST /api/ranking-imports/preview` · `GET/POST /api/ranking-imports` · `GET /api/ranking-imports/:id` · `POST …/:id/revert` | Importación de rankings (Fase 4) |
 | `GET /api/publication` · `PUT /api/publication/settings` (admin) | Publicación web |
+| `POST /api/backup/start` · `GET /api/backup/:tabla?after=` | Respaldo paginado (sólo admin) |
 | `GET /publico` · `/publico/ranking/:temporada\|actual/:categoría[/:división]` · `/publico/jugadores` · `/publico/jugador/:código` | Vista pública de sólo lectura (HTML) |
 
 Cada escritura con efectos múltiples (por ejemplo, alta de jugador + historial + auditoría) se ejecuta en un `db.batch()`, que D1 aplica como una transacción.
@@ -228,10 +239,15 @@ Para compensar el menor número de iteraciones: bloqueo tras 5 fallos, contrase�
 
 ## 6. Pruebas
 
-- `npm test`: 151 tests. Fase 4:
+- `npm test`: **172 tests**. Fase 5B suma 18:
+  - 12 de integridad de puntuaciones (`test/integrity.test.ts`): mismos puntos por integrante, categoría principal y división, regla general frente a acumulativo, cambios de plantilla después de acreditar, triple confirmación concurrente, dos organizadores corrigiendo a la vez, cada corrección contraasentada exactamente una vez, reversión sin borrar historial, categoría acreditada fija ante un cambio de categoría, rankings sólo desde movimientos confirmados (también en la vista pública), temporada cerrada intacta y reapertura sólo por admin, historial protegido.
+  - 5 de respaldo (`test/backup.test.ts`): permisos, restauración completa en una segunda base D1 con comparación fila por fila de las 20 tablas, paginación sin pérdidas, escape de texto y limpieza diaria.
+  - 1 de importación de 1500 filas (más de 64 KB).
+
+  Fase 4: 151 en total hasta esa fase:
   - 18 de lectura de planillas y mapeo: CSV con distintos separadores y codificaciones, XLSX con cadenas compartidas y hojas ocultas, ida y vuelta con el Excel que exporta la app, puntos en formato argentino, categorías “C6/6ta/Sexta”, nombres invertidos, diminutivos, homónimos, duplicados y rendimiento con 3000 jugadores.
   - 12 de integración de la importación: vista previa sin escritura, saldo inicial, jugadores nuevos, archivo o contenido repetido, doble saldo, índice único, reversión y reimportación.
   - 13 de la vista pública: privacidad, `frame-ancestors`, modo incrustado, actualización automática al acreditar, revertir, importar y renombrar, descargas, buscador, configuración, escape de HTML y permisos.
 
   Fase 3: 18 de interpretación del cuadro (sobre la lectura real de la imagen de referencia y variantes con errores típicos), 9 de normalización y coincidencia de nombres, y 6 de integración de la importación. Fase 2: Incluye 15 del motor de puntuación (cálculos, acumulativo, bonificaciones, validaciones, diferencias, desempates), 25 de integración de la Fase 2 (plantillas, parejas, categorías, doble acreditación, concurrencia, correcciones, reversiones, inmutabilidad, temporadas, divisiones, ajustes) y 3 de exportación. Además, los 32 tests de integración de la Fase 1 que corren dentro de workerd con D1 real y las migraciones aplicadas. Cubren autenticación, bloqueo, CSRF, roles, validaciones, homónimos, búsqueda sin acentos, historial, temporada única activa, transiciones de torneos y dashboard.
-- `npm run test:e2e`: 23 pruebas Playwright. La Fase 4 suma importar una planilla al estilo Google Sheets, ver la página pública con y sin incrustar (también en celular), el historial, el buscador, impedir la doble importación y revertir. Antes eran 20, incluido el reconocimiento real de la imagen de referencia en escritorio y celular, con medición de precisión. Antes eran 16 (incluye el flujo completo de carga manual, acreditación, corrección, exportación, ajustes y reversión) contra la app real (Vite + Worker + D1 local aislada), en escritorio y en un celular emulado (Pixel 7). En celular también verifican que no haya scroll horizontal.
+- `npm run test:e2e`: **26 pruebas Playwright**. La Fase 5B suma el circuito completo, sin atajos por API, en PC y en celular: crear torneo, configurar puntos, cargar la imagen del cuadro, identificar jugadores, revisar, importar sin acreditar, acreditar, ver el ranking interno y el público (normal, incrustado y el historial del jugador). Suma también la descarga del respaldo desde la app y su restauración real con `wrangler d1 execute`. Hasta la Fase 4 eran 23 pruebas Playwright. La Fase 4 suma importar una planilla al estilo Google Sheets, ver la página pública con y sin incrustar (también en celular), el historial, el buscador, impedir la doble importación y revertir. Antes eran 20, incluido el reconocimiento real de la imagen de referencia en escritorio y celular, con medición de precisión. Antes eran 16 (incluye el flujo completo de carga manual, acreditación, corrección, exportación, ajustes y reversión) contra la app real (Vite + Worker + D1 local aislada), en escritorio y en un celular emulado (Pixel 7). En celular también verifican que no haya scroll horizontal.

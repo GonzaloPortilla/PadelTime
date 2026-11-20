@@ -4,7 +4,7 @@ import { APP_TIMEZONE, type CategoryChangeType, type Gender } from "@shared/cons
 import { normalizeText, searchTerms, todayIn } from "@shared/text";
 import type { CategoryChange, DuplicateCandidate, Paginated, Player, PlayerDetail } from "@shared/types";
 import type { AppEnv } from "../types";
-import { badRequest, notFound } from "../lib/errors";
+import { badRequest, conflict, notFound } from "../lib/errors";
 import { parseBody, parseId, parseQuery } from "../lib/validate";
 import { auditStmt } from "../lib/audit";
 
@@ -222,6 +222,16 @@ playerRoutes.put("/:id", async (c) => {
   const userId = c.get("user").id;
   const current = await getPlayer(db, id);
   const categoryChanged = current.mainCategoryId !== input.mainCategoryId;
+  if (current.gender !== input.gender) {
+    // Cambiar la rama de alguien con torneos o puntos dejaría su historial en rankings de la otra rama.
+    const history = await db
+      .prepare("SELECT (SELECT COUNT(*) FROM tournament_team_players WHERE player_id = ?1) + (SELECT COUNT(*) FROM point_movements WHERE player_id = ?1) AS n")
+      .bind(id)
+      .first<{ n: number }>();
+    if ((history?.n ?? 0) > 0) {
+      throw conflict("El jugador ya tiene torneos o puntos registrados: no se puede cambiar su rama. Si fue un error de carga, dalo de alta nuevamente con la rama correcta.", { gender: "Tiene historial" });
+    }
+  }
   // Sólo se exige categoría activa si se está cambiando.
   await assertCategory(db, input.mainCategoryId, input.gender, categoryChanged);
 

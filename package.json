@@ -16,10 +16,12 @@
     "db:seed:local": "wrangler d1 execute DB --local --file=seed/demo.sql",
     "user:create": "node scripts/create-user.mjs",
     "cf-typegen": "wrangler types --strict-vars=false worker/worker-configuration.d.ts",
-    "deploy": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "deploy": "node scripts/preflight.mjs && npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy",
     "postinstall": "node scripts/copy-ocr-assets.mjs",
     "predev": "node scripts/copy-ocr-assets.mjs",
-    "prebuild": "node scripts/copy-ocr-assets.mjs"
+    "prebuild": "node scripts/copy-ocr-assets.mjs",
+    "preflight": "node scripts/preflight.mjs",
+    "db:backup:remote": "wrangler d1 export DB --remote --output=respaldo-padel-time.sql"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.108.0",

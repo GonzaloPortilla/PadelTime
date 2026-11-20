@@ -18,7 +18,7 @@ import { indexPage, messagePage, playerPage, rankingPage, searchPage, type PageC
 type PublicEnv = { Bindings: Env };
 
 /** Cambiar al modificar el HTML, para invalidar copias en caché de versiones anteriores. */
-const RENDER_VERSION = "f5a.1";
+const RENDER_VERSION = "f5b.1";
 
 const DEFAULT_ANCESTORS = "https://sites.google.com https://*.googleusercontent.com https://www.padeltime.com.ar https://padeltime.com.ar";
 
@@ -30,6 +30,7 @@ function securityHeaders(env: Env): Record<string, string> {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "Strict-Transport-Security": "max-age=31536000",
   };
 }
 

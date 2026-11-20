@@ -9,6 +9,8 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: "./wrangler.jsonc" },
         miniflare: {
+          // Base adicional, vacía, para probar que un respaldo se restaura completo.
+          d1Databases: ["RESTORE_DB"],
           bindings: {
             TEST_MIGRATIONS: migrations,
             // Menos iteraciones en tests para que corran rápido (el valor real se prueba aparte).

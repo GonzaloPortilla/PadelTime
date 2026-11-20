@@ -28,5 +28,7 @@
     // Google Sites sirve el contenido incrustado desde sites.google.com y *.googleusercontent.com.
     "PUBLIC_FRAME_ANCESTORS": "https://sites.google.com https://*.googleusercontent.com https://www.padeltime.com.ar https://padeltime.com.ar"
   },
+  // Limpieza diaria de sesiones vencidas (06:17 UTC = 03:17 en Argentina). Gratis: hasta 5 cron por cuenta.
+  "triggers": { "crons": ["17 6 * * *"] },
   "observability": { "enabled": true }
 }

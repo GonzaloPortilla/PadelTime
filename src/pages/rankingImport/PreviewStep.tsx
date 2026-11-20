@@ -70,6 +70,12 @@ export function PreviewStep({ payload, preview, loading, error, directory, categ
             ))}
           </dl>
         )}
+        {preview && preview.rowCount > 1000 && (
+          <p className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            Archivo grande ({fmt(preview.rowCount)} filas). Si al confirmar aparece un error del servidor, volvé al paso “Columnas” e importá las hojas de a una o de a pocas: cada importación se puede revertir por separado.
+          </p>
+        )}
       </Card>
 
       {(errors.length > 0 || warnings.length > 0) && (

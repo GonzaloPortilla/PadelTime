@@ -221,3 +221,23 @@ describe("reversión de importaciones", () => {
     expect((await anon.post("/api/ranking-imports/preview", {})).status).toBe(401);
   });
 });
+
+describe("importación grande (Fase 5B)", () => {
+  it("acepta un ranking histórico completo de 1500 filas con jugadores nuevos en una sola importación", async () => {
+    const s = await setup();
+    const newPlayers = Array.from({ length: 1500 }, (_, i) => ({ key: `n${i}`, firstName: `Nombre${i}`, lastName: `Apellido Largo ${i}`, gender: "M", mainCategoryId: s.cab4.id }));
+    const rows = newPlayers.map((p, i) => ({
+      rowNumber: i + 2, sourceName: `${p.lastName.toUpperCase()}, ${p.firstName.toUpperCase()}`, sourcePosition: String(i + 1),
+      playerId: null, newKey: p.key, seasonId: s.season.id, categoryId: s.cab4.id, divisionId: null, points: 3000 - i,
+    }));
+    const body = payload(s, { newPlayers, rows });
+    expect(JSON.stringify(body).length).toBeGreaterThan(64 * 1024);
+    const preview = await s.client.post("/api/ranking-imports/preview", body);
+    expect(preview.status).toBe(200);
+    const res = await s.client.post("/api/ranking-imports", body);
+    expect(res.status).toBe(201);
+    const r = await rankingOf(s.client, s.season.id, s.cab4.id);
+    expect(r.rows).toHaveLength(1500);
+    expect(r.rows[0].points).toBe(3000);
+  });
+});

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import {
-  BookOpenCheck, CalendarRange, ClipboardList, FileUp, Globe, LayoutDashboard, ListOrdered, LogOut, Menu, Shapes, Trophy, UserCog, Users, X, KeyRound,
+  BookOpenCheck, CalendarRange, ClipboardList, FileUp, Globe, LayoutDashboard, ListOrdered, LogOut, Menu, Shapes, Trophy, UserCog, Users, X, KeyRound, DatabaseBackup,
 } from "lucide-react";
 import { ROLE_LABEL } from "@shared/constants";
 import { useAuth } from "@/auth/AuthContext";
@@ -23,7 +23,7 @@ const NAV = [
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
-  const items = [...NAV, ...(user?.role === "admin" ? [{ to: "/usuarios", label: "Usuarios", icon: UserCog, end: false }] : [])];
+  const items = [...NAV, ...(user?.role === "admin" ? [{ to: "/usuarios", label: "Usuarios", icon: UserCog, end: false }, { to: "/respaldo", label: "Respaldo", icon: DatabaseBackup, end: false }] : [])];
   return (
     <nav className="flex flex-col gap-1" aria-label="Principal">
       {items.map(({ to, label, icon: Icon, end }) => (
