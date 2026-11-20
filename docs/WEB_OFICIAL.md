@@ -16,7 +16,7 @@ Documentos relacionados:
 | Verificación | Resultado (20/11/2026) |
 |---|---|
 | Estado de Git | Limpio, sin cambios sin guardar. `main` igual a `origin/main` (commit `4b2ef00`, Fase 5B). |
-| Punto de restauración | Etiqueta **`v5b-estable`** sobre `4b2ef00`. Para volver: `git checkout v5b-estable`. |
+| Punto de restauración | Rama **`restauracion/v5b-estable`** en GitHub (commit `4b2ef00`, idéntico a `main`), y la etiqueta local `v5b-estable` sobre el mismo commit. La etiqueta no se pudo subir: el entorno de trabajo rechaza la subida de etiquetas. Para volver: `git checkout restauracion/v5b-estable`. |
 | Rama de trabajo | **`fase6-web-oficial`** (creada desde `main`). `main` queda intacta. |
 | Tipos (`npm run typecheck`) | Sin errores. |
 | Pruebas automáticas (`npm test`) | **172/172** en 13 archivos. |
@@ -386,7 +386,7 @@ Sólo lo indispensable y sin cambios visibles:
 
 | Cambio | Motivo |
 |---|---|
-| Etiqueta `v5b-estable` y rama `fase6-web-oficial` | Punto de restauración y trabajo aislado. |
+| Rama `restauracion/v5b-estable` (y etiqueta local `v5b-estable`) y rama `fase6-web-oficial` | Punto de restauración y trabajo aislado. |
 | `e2e/circuit.ts` y `e2e/phase2.spec.ts`: `getByLabel("Puntos", { exact: true })` | La prueba del circuito en celular fallaba de forma intermitente por un selector ambiguo. Defecto de la prueba, no de la app. |
 | README y `docs/DESPLIEGUE.md`: D1 gratis = **500 MB por base** (antes decía 5 GB) | Dato corregido con la documentación oficial vigente. Es clave para decidir dónde guardar imágenes. |
 | `docs/WEB_OFICIAL.md`, `docs/web-anterior/INVENTARIO.md`, `docs/web-anterior/inventario-paginas.csv` | Entregables de la fase. |
