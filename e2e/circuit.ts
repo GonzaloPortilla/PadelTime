@@ -56,7 +56,7 @@ export async function runCircuit(page: Page, o: Options) {
 
   // 2. Configurar los puntos propios de este torneo.
   await page.getByRole("tab", { name: "Puntuación" }).click();
-  const champion = page.getByLabel("Puntos").first();
+  const champion = page.getByLabel("Puntos", { exact: true }).first();
   await champion.fill(String(o.championPoints));
   await checkLayout("02-puntuacion");
   await page.getByRole("button", { name: "Guardar puntuación" }).click();

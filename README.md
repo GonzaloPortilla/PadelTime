@@ -8,6 +8,7 @@ Aplicación web para gestionar los torneos y rankings de Padel Time: jugadores, 
 >
 > | Documento | Para quién |
 > |---|---|
+> | [`docs/WEB_OFICIAL.md`](docs/WEB_OFICIAL.md) | **Fase 6:** auditoría, arquitectura propuesta y plan de las Fases 7–11 para la web oficial (inventario de la web anterior en `docs/web-anterior/`) |
 > | [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Puesta en producción paso a paso (configuración, variables, migraciones, verificación) |
 > | [`docs/RESPALDO.md`](docs/RESPALDO.md) | Respaldo y recuperación ante fallos |
 > | [`docs/MANUAL.md`](docs/MANUAL.md) | Manual de operación para los organizadores |
@@ -206,7 +207,7 @@ El segundo comando resetea la contraseña de un usuario existente: también cier
 | CPU por request | 10 ms | Las consultas a D1 no cuentan como CPU. El hash de contraseñas está calibrado en ~6 ms (ver Seguridad). |
 | D1 lecturas | 5 millones de filas/día | Muy por debajo. Una página pública en caché cuesta 2 lecturas. |
 | D1 escrituras | 100.000 filas/día | Muy por debajo. Las sesiones se refrescan como máximo cada 12 h para ahorrar escrituras. |
-| D1 almacenamiento | 5 GB | Años de datos ocupan pocos MB. |
+| D1 almacenamiento | 500 MB por base (5 GB por cuenta) | Años de datos ocupan pocos MB. Las imágenes y documentos de la web NO van en D1 (ver docs/WEB_OFICIAL.md). |
 | D1 consultas por request | 50 (y 100 parámetros por consulta) | Las acreditaciones, correcciones y cargas masivas usan una sola sentencia con `json_each`, sin importar el tamaño del torneo. Ninguna operación supera las ~15 consultas. |
 | Tamaño del Worker | 3 MB | ~113 KB comprimido. |
 | Cron Triggers | 5 por cuenta | 1 (limpieza diaria de sesiones). |

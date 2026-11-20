@@ -140,7 +140,7 @@ Uso esperado con 2–3 organizadores y visitas públicas moderadas (detalle en e
 | Archivos de la app | Ilimitados | No consumen solicitudes. |
 | D1: lecturas | 5 millones de filas por día | Muy por debajo. |
 | D1: escrituras | 100.000 filas por día | Muy por debajo. Una acreditación de 32 jugadores escribe unas 40 filas. |
-| D1: almacenamiento | 5 GB | Años de datos ocupan pocos MB. |
+| D1: almacenamiento | 500 MB por base (5 GB por cuenta) | Años de datos ocupan pocos MB. |
 | Tareas programadas | 5 por cuenta | Se usa 1. |
 | Time Travel (recuperación) | 7 días | Incluido. |
 

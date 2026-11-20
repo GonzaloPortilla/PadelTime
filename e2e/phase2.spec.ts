@@ -158,7 +158,7 @@ test("plantillas reutilizables y puntuación propia del torneo", async ({ page }
   await page.getByRole("button", { name: /Torneo Clausura/ }).click();
   await page.getByRole("tab", { name: "Puntuación" }).click();
   await expect(page.getByText('Basada en "Torneo largo estándar"')).toBeVisible();
-  await page.getByLabel("Puntos").first().fill("150");
+  await page.getByLabel("Puntos", { exact: true }).first().fill("150");
   await page.getByRole("button", { name: "Guardar puntuación" }).click();
   await expect(page.getByText("Puntuación del torneo guardada")).toBeVisible();
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/p2-07-puntuacion-torneo.png`, fullPage: true });
