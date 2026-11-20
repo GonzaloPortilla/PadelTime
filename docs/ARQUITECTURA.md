@@ -217,6 +217,23 @@ Detalle en [`docs/WEB_PUBLICA.md`](WEB_PUBLICA.md). Resumen técnico:
 - **API nueva:** `GET /api/site` (con sesión) y `PUT /api/site` (admin). `tournamentSchema` acepta los campos públicos con valores por defecto.
 - **Ramas activas:** `site_active_genders`, que filtran la web y las altas del panel. No se modifica ningún dato.
 
+## 2 septies. Gestor de contenidos (Fase 8)
+
+Detalle en [`docs/CMS.md`](CMS.md). Resumen técnico:
+
+- **Migración 0006:**
+  - `site_pages` y `site_posts` reconstruidas: estados borrador, publicada y archivada; columnas `draft`, `version` y `published_*`;
+  - tablas `site_revisions`, `media` y `site_sponsors`;
+  - versión en `site_events`;
+  - inicio por bloques.
+- **API:**
+  - `/api/cms/*`: páginas, novedades, patrocinadores, eventos, historial y vista previa HTML;
+  - `/api/media`: subida binaria validada, deduplicación SHA-256, uso y borrado seguro;
+  - `/media/<id>` público, servido desde KV.
+- **Concurrencia:** `UPDATE … WHERE version = ?`. El historial y la auditoría se condicionan con `changes() > 0`.
+- **Render:** `worker/public/views.ts` arma cada página a partir de su contenido. Lo usan las rutas públicas y `preview.ts`, así la vista previa es idéntica a la web.
+- **Almacenamiento:** binding KV `MEDIA` detrás de la interfaz `MediaStore` (cambiable a R2).
+
 ## 3. API
 
 Todas las respuestas son JSON. Los errores tienen la forma `{ error: { code, message, fields? } }`, con los mensajes en español.

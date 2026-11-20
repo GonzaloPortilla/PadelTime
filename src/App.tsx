@@ -32,6 +32,14 @@ const MovementsPage = page(() => import("@/pages/MovementsPage"), "MovementsPage
 const RankingImportPage = page(() => import("@/pages/rankingImport/RankingImportPage"), "RankingImportPage");
 const PublicationPage = page(() => import("@/pages/PublicationPage"), "PublicationPage");
 const PlayerDetailPage = page(() => import("@/pages/PlayerDetailPage"), "PlayerDetailPage");
+const WebHomePage = page(() => import("@/pages/web/content"), "WebHomePage");
+const PageEditorPage = page(() => import("@/pages/web/content"), "PageEditorPage");
+const PostsPage = page(() => import("@/pages/web/content"), "PostsPage");
+const PostEditorPage = page(() => import("@/pages/web/content"), "PostEditorPage");
+const MediaLibraryPage = page(() => import("@/pages/web/media"), "MediaLibraryPage");
+const SponsorsPage = page(() => import("@/pages/web/extra"), "SponsorsPage");
+const EventsPage = page(() => import("@/pages/web/extra"), "EventsPage");
+const SiteDataPage = page(() => import("@/pages/web/extra"), "SiteDataPage");
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -60,6 +68,14 @@ export function App() {
         <Route path="rankings" element={<RankingsPage />} />
         <Route path="importar-rankings" element={<RankingImportPage />} />
         <Route path="publicacion" element={<PublicationPage />} />
+        <Route path="web" element={<WebHomePage />} />
+        <Route path="web/paginas/:id" element={<PageEditorPage />} />
+        <Route path="web/novedades" element={<PostsPage />} />
+        <Route path="web/novedades/:id" element={<PostEditorPage />} />
+        <Route path="web/multimedia" element={<MediaLibraryPage />} />
+        <Route path="web/patrocinadores" element={<SponsorsPage />} />
+        <Route path="web/calendario" element={<EventsPage />} />
+        <Route path="web/datos" element={<SiteDataPage />} />
         <Route path="puntuacion" element={<TemplatesPage />} />
         <Route path="movimientos" element={<MovementsPage />} />
         <Route path="temporadas" element={<SeasonsPage />} />

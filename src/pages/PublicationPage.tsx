@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox, FilterSelect, FormError, TextField } from "@/components/ui/Field";
 import { Badge, Card, CardHeader, EmptyState, ErrorState, PageHeader, Spinner } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/Toast";
-import { SiteSettingsCard } from "./publication/SiteSettingsCard";
+import { Link } from "react-router";
 
 const pubKey = ["publication"] as const;
 
@@ -163,7 +163,10 @@ export function PublicationPage() {
             </Card>
           </div>
           <div className="space-y-4">
-            <SiteSettingsCard />
+            <Card className="p-4 text-sm text-slate-600 sm:p-5">
+              <h2 className="text-sm font-semibold text-slate-900">Contenidos de la web</h2>
+              <p className="mt-1">Textos, novedades, fotos, patrocinadores, WhatsApp, sede y aviso destacado se editan en <Link to="/web" className="font-medium text-brand-700 hover:underline">Contenidos web</Link>.</p>
+            </Card>
             <SettingsCard data={q.data} />
             <Card className="p-4 text-sm text-slate-600 sm:p-5">
               <h2 className="text-sm font-semibold text-slate-900">Cómo agregarlo en Google Sites</h2>

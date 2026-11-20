@@ -1,6 +1,7 @@
 import { app } from "./app";
 import { publicApp } from "./public/app";
 import { cleanupExpired } from "./lib/maintenance";
+import { mediaHeaders, mediaStore } from "./lib/media";
 
 /**
  * Reparto de rutas (Fase 7):
@@ -50,6 +51,14 @@ export default {
     const { pathname } = url;
     if (pathname === "/api" || pathname.startsWith("/api/")) return app.fetch(request, env, ctx);
     if (pathname === "/admin" || pathname.startsWith("/admin/")) return serveAdmin(request, env);
+    // Archivos de la biblioteca de medios: /media/<id>/<nombre>. Inmutables: caché de un año.
+    const media = /^\/media\/([0-9a-f-]{36})(?:\/[^/]*)?$/.exec(pathname);
+    if (media && (request.method === "GET" || request.method === "HEAD")) {
+      if (request.headers.get("if-none-match") === `"${media[1]}"`) return new Response(null, { status: 304, headers: { ETag: `"${media[1]}"` } });
+      const file = await mediaStore(env).get(media[1]!);
+      if (!file) return new Response("Archivo no encontrado", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
+      return new Response(request.method === "HEAD" ? null : file.body, { headers: { ...mediaHeaders(file), ETag: `"${media[1]}"` } });
+    }
     const legacy = legacyAdminPath(pathname);
     if (legacy) return Response.redirect(`${url.origin}${legacy}${url.search}`, 301);
     // Archivos de la raíz que no son páginas (manifest, íconos…): los sirve Cloudflare.

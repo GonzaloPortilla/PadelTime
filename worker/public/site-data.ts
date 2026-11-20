@@ -9,6 +9,27 @@ import { parseBlocks, type Block, type Series } from "@shared/site";
 
 export interface SitePage { slug: string; title: string; summary: string | null; blocks: Block[]; seoTitle: string | null; seoDescription: string | null; updatedAt: string }
 
+/** Datos de un archivo de la biblioteca de medios, para dibujarlo. */
+export interface MediaInfo { id: string; kind: "imagen" | "documento"; url: string; width: number | null; height: number | null; title: string; alt: string | null; bytes: number; filename: string }
+export type MediaMap = Map<string, MediaInfo>;
+
+export async function loadMedia(db: D1Database, ids: string[]): Promise<MediaMap> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (!unique.length) return new Map();
+  const { results } = await db
+    .prepare("SELECT id, kind, width, height, title, alt, bytes, filename FROM media WHERE id IN (SELECT value FROM json_each(?))")
+    .bind(JSON.stringify(unique))
+    .all<{ id: string; kind: "imagen" | "documento"; width: number | null; height: number | null; title: string; alt: string | null; bytes: number; filename: string }>();
+  return new Map(results.map((r) => [r.id, { ...r, url: `/media/${r.id}/${r.filename}` }]));
+}
+
+export interface PublicSponsor { name: string; url: string | null; mediaId: string }
+
+export async function loadSponsors(db: D1Database): Promise<PublicSponsor[]> {
+  const { results } = await db.prepare("SELECT name, url, media_id FROM site_sponsors WHERE active = 1 ORDER BY sort_order, id").all<{ name: string; url: string | null; media_id: string }>();
+  return results.map((r) => ({ name: r.name, url: r.url, mediaId: r.media_id }));
+}
+
 export async function loadPage(db: D1Database, slug: string): Promise<SitePage | null> {
   const r = await db
     .prepare("SELECT slug, title, summary, blocks, seo_title, seo_description, updated_at FROM site_pages WHERE slug = ? AND status = 'publicada'")
@@ -107,26 +128,26 @@ export async function tournamentTeamsAndResults(db: D1Database, id: number): Pro
 }
 
 // ─────────────────────────── Novedades y eventos ───────────────────────────
-export interface PublicPost { slug: string; title: string; excerpt: string | null; blocks: Block[]; publishedAt: string; tournamentId: number | null }
+export interface PublicPost { slug: string; title: string; excerpt: string | null; blocks: Block[]; publishedAt: string; tournamentId: number | null; coverMediaId: string | null }
 
 export async function latestPosts(db: D1Database, limit: number, nowIso: string): Promise<PublicPost[]> {
   const { results } = await db
     .prepare(
-      `SELECT slug, title, excerpt, blocks, published_at, tournament_id FROM site_posts
+      `SELECT slug, title, excerpt, blocks, published_at, tournament_id, cover_media_id FROM site_posts
         WHERE status = 'publicada' AND published_at IS NOT NULL AND published_at <= ?
         ORDER BY pinned DESC, published_at DESC LIMIT ?`,
     )
     .bind(nowIso, limit)
-    .all<{ slug: string; title: string; excerpt: string | null; blocks: string; published_at: string; tournament_id: number | null }>();
-  return results.map((r) => ({ slug: r.slug, title: r.title, excerpt: r.excerpt, blocks: parseBlocks(r.blocks), publishedAt: r.published_at, tournamentId: r.tournament_id }));
+    .all<{ slug: string; title: string; excerpt: string | null; blocks: string; published_at: string; tournament_id: number | null; cover_media_id: string | null }>();
+  return results.map((r) => ({ slug: r.slug, title: r.title, excerpt: r.excerpt, blocks: parseBlocks(r.blocks), publishedAt: r.published_at, tournamentId: r.tournament_id, coverMediaId: r.cover_media_id }));
 }
 
 export async function loadPost(db: D1Database, slug: string, nowIso: string): Promise<PublicPost | null> {
   const r = await db
-    .prepare("SELECT slug, title, excerpt, blocks, published_at, tournament_id FROM site_posts WHERE slug = ? AND status = 'publicada' AND published_at <= ?")
+    .prepare("SELECT slug, title, excerpt, blocks, published_at, tournament_id, cover_media_id FROM site_posts WHERE slug = ? AND status = 'publicada' AND published_at <= ?")
     .bind(slug, nowIso)
-    .first<{ slug: string; title: string; excerpt: string | null; blocks: string; published_at: string; tournament_id: number | null }>();
-  return r ? { slug: r.slug, title: r.title, excerpt: r.excerpt, blocks: parseBlocks(r.blocks), publishedAt: r.published_at, tournamentId: r.tournament_id } : null;
+    .first<{ slug: string; title: string; excerpt: string | null; blocks: string; published_at: string; tournament_id: number | null; cover_media_id: string | null }>();
+  return r ? { slug: r.slug, title: r.title, excerpt: r.excerpt, blocks: parseBlocks(r.blocks), publishedAt: r.published_at, tournamentId: r.tournament_id, coverMediaId: r.cover_media_id } : null;
 }
 
 export type EventKind = "cancha_abierta" | "evento" | "inscripcion" | "otro";

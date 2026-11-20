@@ -1,23 +1,18 @@
 import { Hono, type Context } from "hono";
 import { APP_TIMEZONE } from "@shared/constants";
+import { todayIn } from "@shared/text";
 import { CSV_MIME, XLSX_MIME, slug, toCsv, toXlsx } from "@shared/export";
 import { RANKING_HEADER, rankingRows, rankingSheet } from "@shared/rankingExport";
-import { SERIES, SERIES_SLUG, tournamentIdFromSlug, tournamentPath, type Series } from "@shared/site";
-import { todayIn } from "@shared/text";
+import { tournamentIdFromSlug, tournamentPath } from "@shared/site";
 import { loadPublicSettings, publicVersion, type PublicSettings } from "../lib/settings";
 import { loadPlayer, loadRanking, rankingRefs, resolveSeason, searchPlayers, visibleSeasons } from "./data";
 import type { PageCtx } from "./layout";
-import { indexPage, messagePage, playerPage, rankingPage, rankingPath, searchPage } from "./pages";
+import { messagePage, playerPage, rankingPage, rankingPath, searchPage } from "./pages";
+import { loadPage, loadPost, postSlugs, publicTournament, publicTournaments, tournamentTeamsAndResults } from "./site-data";
+import { notFoundPage, robotsTxt, sitemapXml, tournamentPage } from "./site-pages";
 import {
-  eventsBetween, finished, inProgress, latestPosts, loadPage, loadPost, postSlugs, publicTournament, publicTournaments,
-  tournamentTeamsAndResults, upcoming,
-} from "./site-data";
-import {
-  calendarPage, contactPage, contentPage, eventsList, homePage, newsListPage, newsPage, notFoundPage, prizesList, robotsTxt, sideLinks,
-  sitemapXml, TOURNAMENT_TABS, tournamentPage, tournamentsPage, type TournamentTab,
-} from "./site-pages";
-import { waButton } from "./layout";
-import { h, type Raw } from "./html";
+  calendarView, contactView, contentView, homeView, makeCtx, newsListView, newsView, rankingsIndexView, RENDER_VERSION, tournamentsView,
+} from "./views";
 
 /**
  * Web pública oficial (sin sesión). Es una app aparte de la API: no lee cookies ni sesiones,
@@ -30,8 +25,6 @@ import { h, type Raw } from "./html";
 
 type PublicEnv = { Bindings: Env };
 
-/** Cambiar al modificar el HTML o el CSS, para invalidar copias en caché de versiones anteriores. */
-const RENDER_VERSION = "f7.2";
 
 const DEFAULT_ANCESTORS = "https://sites.google.com https://*.googleusercontent.com https://www.padeltime.com.ar https://padeltime.com.ar";
 
@@ -61,10 +54,6 @@ function remember(key: string, value: Rendered) {
 const HTML = "text/html; charset=utf-8";
 const html = (body: string, status = 200): Rendered => ({ body, status, type: HTML });
 const redirect = (location: string): Rendered => ({ body: "", status: 301, type: "text/plain", location });
-
-function baseOf(pathname: string): PageCtx["base"] {
-  return pathname === "/publico" || pathname.startsWith("/publico/") ? "/publico" : "/rankings";
-}
 
 async function serve(c: Context<PublicEnv>, render: (ctx: PageCtx, settings: PublicSettings) => Promise<Rendered>): Promise<Response> {
   const db = c.env.DB;
@@ -113,10 +102,7 @@ async function serve(c: Context<PublicEnv>, render: (ctx: PageCtx, settings: Pub
   }
 
   const settings = await loadPublicSettings(db);
-  const ctx: PageCtx = {
-    title: settings.title, embed, showHistory: settings.showHistory, base: baseOf(url.pathname), site: settings.site,
-    origin: url.origin, path: url.pathname + (url.search && !embed ? url.search : ""), today, assetVersion: RENDER_VERSION,
-  };
+  const ctx: PageCtx = makeCtx(settings, url, { embed });
   const rendered = await render(ctx, settings);
   // Sólo se guardan respuestas exitosas, redirecciones o 404 (no errores transitorios).
   if (rendered.status === 200 || rendered.status === 404 || rendered.status === 301) {
@@ -151,37 +137,11 @@ publicApp.onError((err, c) => {
 const genders = (s: PublicSettings) => s.site.activeGenders;
 
 // ─────────────────────────── Inicio ───────────────────────────
-publicApp.get("/", (c) =>
-  serve(c, async (ctx, settings) => {
-    const db = c.env.DB;
-    const [page, all, posts, seasons] = await Promise.all([
-      loadPage(db, "inicio"), publicTournaments(db, genders(settings)), latestPosts(db, 3, new Date().toISOString()), visibleSeasons(db),
-    ]);
-    const season = resolveSeason(seasons, "actual");
-    const refs = season && settings.enabled ? await rankingRefs(db, season.id, genders(settings)) : [];
-    const up = upcoming(all, ctx.today);
-    return html(homePage(ctx, {
-      page, upcoming: up, inProgress: inProgress(all), posts, season, refs,
-      // Destacados que no aparecen ya en "en curso" o "próximos".
-      featured: all.filter((t) => t.featured && t.status !== "cancelado" && !up.slice(0, 6).some((u) => u.id === t.id) && !inProgress(all).slice(0, 6).some((u) => u.id === t.id)),
-    }));
-  }),
-);
+publicApp.get("/", (c) => serve(c, async (ctx, settings) => html(await homeView(c.env.DB, ctx, settings, await loadPage(c.env.DB, "inicio")))));
 
 // ─────────────────────────── Torneos ───────────────────────────
 publicApp.get("/torneos", (c) =>
-  serve(c, async (ctx, settings) => {
-    const all = await publicTournaments(c.env.DB, genders(settings));
-    const q = (k: string) => c.req.query(k) ?? "";
-    const tab = (TOURNAMENT_TABS.find((t) => t.key === q("estado"))?.key ?? "proximos") as TournamentTab;
-    const num = (v: string) => (/^\d{1,9}$/.test(v) ? Number(v) : null);
-    const series = (SERIES.find((s) => SERIES_SLUG[s] === q("modalidad")) ?? null) as Series | null;
-    const f = { tab, seasonId: num(q("temporada")), categoryId: num(q("categoria")), series };
-    const filtered = all.filter((t) => (!f.seasonId || t.seasonId === f.seasonId) && (!f.categoryId || t.categoryId === f.categoryId) && (!f.series || t.series === f.series));
-    const list = tab === "proximos" ? upcoming(filtered, ctx.today) : tab === "en-curso" ? inProgress(filtered) : tab === "finalizados" ? finished(filtered)
-      : [...filtered].sort((a, b) => b.seasonYear - a.seasonYear || a.startDate.localeCompare(b.startDate));
-    return html(tournamentsPage(ctx, all, list, f));
-  }),
+  serve(c, async (ctx, settings) => html(await tournamentsView(c.env.DB, ctx, settings, await loadPage(c.env.DB, "torneos"), new URL(c.req.url).searchParams))),
 );
 
 publicApp.get("/torneos/:slug", (c) =>
@@ -198,71 +158,28 @@ publicApp.get("/torneos/:slug", (c) =>
 
 // ─────────────────────────── Calendario ───────────────────────────
 publicApp.get("/calendario", (c) =>
-  serve(c, async (ctx, settings) => {
-    const req = c.req.query("mes") ?? "";
-    const month = /^(20\d{2})-(0[1-9]|1[0-2])$/.test(req) ? req : ctx.today.slice(0, 7);
-    const [y, m] = month.split("-").map(Number) as [number, number];
-    const first = `${month}-01`;
-    const last = `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
-    const [all, events] = await Promise.all([publicTournaments(c.env.DB, genders(settings)), eventsBetween(c.env.DB, first, last)]);
-    const inMonth = all.filter((t) => t.status !== "cancelado" && t.startDate <= last && t.endDate >= first);
-    return html(calendarPage(ctx, month, inMonth, events));
-  }),
+  serve(c, async (ctx, settings) => html(await calendarView(c.env.DB, ctx, settings, await loadPage(c.env.DB, "calendario"), c.req.query("mes") ?? ""))),
 );
 
-// ─────────────────────────── Contenidos ───────────────────────────
-publicApp.get("/reglamentos", (c) =>
-  serve(c, async (ctx) => {
-    const page = await loadPage(c.env.DB, "reglamentos");
-    if (!page) return html(notFoundPage(ctx), 404);
-    const extra = sideLinks([{ label: "Liga: cómo funciona el circuito", href: "/liga" }, { label: "Cancha abierta", href: "/cancha-abierta" }, { label: "Calendario", href: "/calendario" }, { label: "Torneos", href: "/torneos" }]);
-    return html(contentPage(ctx, page, "reglamentos", extra, { print: true }));
-  }),
-);
+// ─────────────────────────── Contenidos (editables desde Web → Páginas) ───────────────────────────
+for (const slugName of ["reglamentos", "liga", "cancha-abierta", "premios"]) {
+  publicApp.get(`/${slugName}`, (c) =>
+    serve(c, async (ctx, settings) => {
+      const page = await loadPage(c.env.DB, slugName); // sólo si está publicada (oculta = 404)
+      return page ? html(await contentView(c.env.DB, ctx, settings, page)) : html(notFoundPage(ctx), 404);
+    }),
+  );
+}
 
-publicApp.get("/liga", (c) =>
-  serve(c, async (ctx) => {
-    const page = await loadPage(c.env.DB, "liga");
-    if (!page) return html(notFoundPage(ctx), 404);
-    const extra = sideLinks([{ label: "Torneos", href: "/torneos" }, { label: "Rankings", href: "/rankings" }, { label: "Reglamentos", href: "/reglamentos" }, { label: "Calendario", href: "/calendario" }]);
-    return html(contentPage(ctx, page, "liga", extra));
-  }),
-);
+publicApp.get("/contacto", (c) => serve(c, async (ctx) => html(await contactView(c.env.DB, ctx, await loadPage(c.env.DB, "contacto")))));
 
-publicApp.get("/cancha-abierta", (c) =>
-  serve(c, async (ctx) => {
-    const page = await loadPage(c.env.DB, "cancha-abierta");
-    if (!page) return html(notFoundPage(ctx), 404);
-    const until = new Date(Date.parse(`${ctx.today}T00:00:00Z`) + 183 * 86_400_000).toISOString().slice(0, 10);
-    const events = await eventsBetween(c.env.DB, ctx.today, until, "cancha_abierta");
-    const extra = h2("Próximas fechas", eventsList(events, "Sin fechas publicadas", "Consultá las próximas canchas abiertas por WhatsApp.",
-      waButton(ctx, "Consultar por WhatsApp", "Hola! Quiero anotarme a una cancha abierta.")));
-    return html(contentPage(ctx, page, "cancha-abierta", extra));
-  }),
-);
-
-publicApp.get("/premios", (c) =>
-  serve(c, async (ctx, settings) => {
-    const page = await loadPage(c.env.DB, "premios");
-    if (!page) return html(notFoundPage(ctx), 404);
-    const all = await publicTournaments(c.env.DB, genders(settings));
-    const withPrizes = all.filter((t) => t.prizeInfo && t.status !== "cancelado")
-      .sort((a, b) => Number(a.status === "finalizado") - Number(b.status === "finalizado") || a.startDate.localeCompare(b.startDate));
-    return html(contentPage(ctx, page, "premios", h2("Premios por torneo", prizesList(ctx, withPrizes))));
-  }),
-);
-
-publicApp.get("/contacto", (c) => serve(c, async (ctx) => html(contactPage(ctx, await loadPage(c.env.DB, "contacto")))));
-
-publicApp.get("/novedades", (c) => serve(c, async (ctx) => html(newsListPage(ctx, await latestPosts(c.env.DB, 60, new Date().toISOString())))));
+publicApp.get("/novedades", (c) => serve(c, async (ctx) => html(await newsListView(c.env.DB, ctx, await loadPage(c.env.DB, "novedades")))));
 publicApp.get("/novedades/:slug", (c) =>
   serve(c, async (ctx) => {
     const post = await loadPost(c.env.DB, c.req.param("slug"), new Date().toISOString());
-    return post ? html(newsPage(ctx, post)) : html(notFoundPage(ctx, "Novedad no encontrada", "La novedad no existe o ya no está publicada."), 404);
+    return post ? html(await newsView(c.env.DB, ctx, post)) : html(notFoundPage(ctx, "Novedad no encontrada", "La novedad no existe o ya no está publicada."), 404);
   }),
 );
-
-const h2 = (title: string, inner: Raw) => h`<h2 style="margin-top:0">${title}</h2>${inner}`;
 
 // ─────────────────────────── Rankings (/rankings y, por compatibilidad, /publico) ───────────────────────────
 const disabled = (ctx: PageCtx) => html(messagePage(ctx, "Rankings no disponibles", "La publicación de rankings está desactivada por el momento."), 404);
@@ -270,9 +187,8 @@ const disabled = (ctx: PageCtx) => html(messagePage(ctx, "Rankings no disponible
 const rankingsIndex = (c: Context<PublicEnv>) =>
   serve(c, async (ctx, settings) => {
     if (!settings.enabled) return disabled(ctx);
-    const seasons = await visibleSeasons(c.env.DB);
-    const items = await Promise.all(seasons.slice(0, 6).map(async (season) => ({ season, refs: await rankingRefs(c.env.DB, season.id, genders(settings)) })));
-    return html(indexPage(ctx, items));
+    // En el modo incrustado de Google Sites no se muestra la introducción editable.
+    return html(await rankingsIndexView(c.env.DB, ctx, settings, ctx.embed ? null : await loadPage(c.env.DB, "rankings")));
   });
 
 async function rankingHandler(c: Context<PublicEnv>) {

@@ -22,6 +22,10 @@ export interface PageCtx {
   today: string;
   /** Versión de los recursos estáticos (rompe la caché del CSS al cambiar el diseño). */
   assetVersion: string;
+  /** Páginas de contenido ocultas desde el CMS (no aparecen en el menú). */
+  hiddenPages: string[];
+  /** Vista previa del CMS (contenido sin publicar, sólo para organizadores). */
+  preview?: boolean;
 }
 
 export type Section = "inicio" | "torneos" | "rankings" | "calendario" | "reglamentos" | "liga" | "cancha-abierta" | "premios" | "contacto" | "novedades";
@@ -109,12 +113,13 @@ export function layout(ctx: PageCtx, o: LayoutOpts): string {
   const canonical = `${ctx.origin}${o.canonical ?? ctx.path}`;
   const fullTitle = o.title === ctx.title ? o.title : `${o.title} | ${ctx.title}`;
   const ogImage = `${ctx.origin}${o.ogImage ?? "/brand/icon-512.png"}`;
-  const announce = !ctx.embed && ctx.site.announcementText
+  const announceActive = ctx.site.announcementText && (!ctx.site.announcementUntil || ctx.site.announcementUntil >= ctx.today);
+  const announce = !ctx.embed && announceActive
     ? h`<div class="announce" role="region" aria-label="Aviso">${ctx.site.announcementText}${ctx.site.announcementUrl ? h`<a href="${ctx.site.announcementUrl}"${/^https?:/i.test(ctx.site.announcementUrl) ? raw(' target="_blank" rel="noopener"') : ""}>Ver más</a>` : ""}</div>`
     : "";
   const ig = instagramUrl(ctx);
   const wa = whatsappUrl(ctx.site.whatsapp, ctx.site.whatsappMessage);
-  const navItems = NAV.map((n) => h`<li><a href="${n.href}"${o.section === n.key ? raw(' aria-current="page"') : ""}>${n.label}</a></li>`);
+  const navItems = NAV.filter((n) => !ctx.hiddenPages.includes(n.href.slice(1))).map((n) => h`<li><a href="${n.href}"${o.section === n.key ? raw(' aria-current="page"') : ""}>${n.label}</a></li>`);
   const page = h`<!doctype html>
 <html lang="es-AR">
 <head>
@@ -132,6 +137,7 @@ export function layout(ctx: PageCtx, o: LayoutOpts): string {
 <meta property="og:image" content="${ogImage}">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0f5a93">
+${ctx.preview ? raw('<meta name="robots" content="noindex, nofollow">') : ""}
 <link rel="icon" href="/brand/favicon-64.png" type="image/png">
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
 <link rel="preload" href="/pub/fonts/oswald-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -140,6 +146,7 @@ export function layout(ctx: PageCtx, o: LayoutOpts): string {
 ${o.jsonLd ? jsonLdTag(o.jsonLd) : ""}
 </head>
 <body class="${ctx.embed ? "embed" : ""}">
+${ctx.preview ? h`<div class="preview-bar" role="status">Vista previa · Este contenido todavía no está publicado. Cerrá esta pestaña para volver al panel.</div>` : ""}
 ${ctx.embed ? h`<div class="stripe" aria-hidden="true"></div>` : h`<a class="skip" href="#contenido">Saltar al contenido</a>
 ${announce}
 <header class="top"><div class="stripe" aria-hidden="true"></div><div class="in">
@@ -157,7 +164,7 @@ ${ctx.embed
     ${ctx.site.tagline ? h`<p>${ctx.site.tagline}</p>` : ""}
     ${ctx.site.venueName || ctx.site.address ? h`<p>${ctx.site.venueName}${ctx.site.venueName && ctx.site.address ? h`<br>` : ""}${ctx.site.address}</p>` : ""}
   </div>
-  <div><h4>Secciones</h4><ul>${NAV.slice(1).map((n) => h`<li><a href="${n.href}">${n.label}</a></li>`)}</ul></div>
+  <div><h4>Secciones</h4><ul>${NAV.slice(1).filter((n) => !ctx.hiddenPages.includes(n.href.slice(1))).map((n) => h`<li><a href="${n.href}">${n.label}</a></li>`)}</ul></div>
   <div><h4>Contacto</h4><ul>
     ${wa ? h`<li><a href="${wa}" target="_blank" rel="noopener">WhatsApp</a></li>` : ""}
     ${ig ? h`<li><a href="${ig}" target="_blank" rel="noopener">Instagram @${ctx.site.instagram}</a></li>` : ""}

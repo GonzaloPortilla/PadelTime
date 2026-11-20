@@ -3,6 +3,7 @@ import { DatabaseBackup, Download, ShieldAlert } from "lucide-react";
 import { dumpHeader, dumpPage, type BackupPage as BackupPageData, type BackupTable } from "@shared/backup";
 import { api } from "@/lib/api";
 import { downloadFile } from "@/lib/download";
+import { strToU8, zipSync } from "fflate";
 import { Button } from "@/components/ui/Button";
 import { FormError } from "@/components/ui/Field";
 import { Card, CardHeader, PageHeader } from "@/components/ui/misc";
@@ -90,6 +91,51 @@ export function BackupPage() {
           </div>
         </div>
       </Card>
+      <MediaBackupCard />
     </div>
+  );
+}
+
+/**
+ * Los archivos de la web (fotos, logos, PDF) viven en Workers KV, fuera de la base: se descargan aparte,
+ * en un .zip con un índice (manifest.json) para restaurarlos con `node scripts/restore-media.mjs`.
+ */
+function MediaBackupCard() {
+  const toast = useToast();
+  const [state, setState] = useState<{ done: number; total: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const run = async () => {
+    setError(null);
+    try {
+      const { items } = await api.get<{ items: { id: string; filename: string; mime: string; url: string }[] }>("/media");
+      setState({ done: 0, total: items.length });
+      const files: Record<string, Uint8Array> = {};
+      for (const [i, m] of items.entries()) {
+        const res = await fetch(m.url);
+        if (!res.ok) throw new Error(`No se pudo descargar ${m.filename}`);
+        files[`archivos/${m.id}/${m.filename}`] = new Uint8Array(await res.arrayBuffer());
+        setState({ done: i + 1, total: items.length });
+      }
+      files["manifest.json"] = strToU8(JSON.stringify(items.map((m) => ({ id: m.id, filename: m.filename, mime: m.mime })), null, 2));
+      const zip = zipSync(files, { level: 0 });
+      downloadFile(zip, `padel-time-multimedia-${new Date().toISOString().slice(0, 10)}.zip`, "application/zip");
+      toast(`Multimedia descargada (${items.length} archivo${items.length === 1 ? "" : "s"})`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo generar el archivo");
+    } finally {
+      setState(null);
+    }
+  };
+  return (
+    <Card className="mt-4">
+      <CardHeader title="Descargar archivos multimedia" subtitle="Fotos, logos y PDF de la web (se guardan fuera de la base de datos)." />
+      <div className="space-y-3 p-4 sm:p-5">
+        <p className="text-sm text-slate-600">Junto con el respaldo .sql, guardá también este .zip. Se restaura con <code>node scripts/restore-media.mjs</code> (ver <code>docs/RESPALDO.md</code>).</p>
+        {error && <FormError message={error} />}
+        <Button variant="secondary" icon={<Download className="size-4" />} loading={state !== null} onClick={() => void run()}>
+          {state ? `Descargando ${state.done} de ${state.total}…` : "Descargar multimedia (.zip)"}
+        </Button>
+      </div>
+    </Card>
   );
 }

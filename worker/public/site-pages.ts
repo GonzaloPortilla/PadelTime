@@ -5,7 +5,7 @@
  * nada de lo que se ve está escrito en el código, salvo textos de interfaz y estados vacíos.
  */
 import { GENDER_LABEL, TOURNAMENT_TYPE_LABEL, type TournamentStatus } from "@shared/constants";
-import { SERIES, SERIES_LABEL, SERIES_SLUG, tournamentPath, type Block, type Series } from "@shared/site";
+import { parseInline, SERIES, SERIES_LABEL, SERIES_SLUG, tournamentPath, whatsappUrl, type Block, type Series } from "@shared/site";
 import { h, raw, type Raw } from "./html";
 import type { PublicRankingRef, PublicSeason } from "./data";
 import {
@@ -13,7 +13,7 @@ import {
   type PageCtx,
 } from "./layout";
 import { rankingName, rankingPath } from "./pages";
-import type { EventKind, PublicEvent, PublicPost, PublicResult, PublicTeam, PublicTournament, SitePage } from "./site-data";
+import type { EventKind, MediaMap, PublicEvent, PublicPost, PublicResult, PublicSponsor, PublicTeam, PublicTournament, SitePage } from "./site-data";
 
 // ─────────────────────────── Utilidades ───────────────────────────
 const STATUS_LABEL: Record<TournamentStatus, string> = { programado: "Próximo", en_curso: "En curso", finalizado: "Finalizado", cancelado: "Cancelado" };
@@ -26,6 +26,14 @@ const categoryLabel = (ctx: PageCtx, t: Pick<PublicTournament, "categoryName" | 
 /** Texto plano → párrafos (respeta saltos de línea). */
 const paragraphs = (text: string): Raw => h`${text.split(/\n{2,}/).map((p) => h`<p>${p.split("\n").map((l, i) => (i ? h`<br>${l}` : h`${l}`))}</p>`)}`;
 
+/** Texto enriquecido (**negrita**, *cursiva*, [enlace](url)) → HTML seguro: cada parte se escapa. */
+const inline = (text: string): Raw => h`${parseInline(text).map((seg) =>
+  seg.t === "b" ? h`<strong>${seg.v}</strong>` : seg.t === "i" ? h`<em>${seg.v}</em>`
+    : seg.t === "a" ? h`<a href="${seg.href}"${/^https?:/i.test(seg.href) ? raw(' target="_blank" rel="noopener"') : ""}>${seg.v}</a>` : h`${seg.v}`)}`;
+const richParagraphs = (text: string): Raw => h`${text.split(/\n{2,}/).map((p) => h`<p>${p.split("\n").map((l, i) => (i ? h`<br>${inline(l)}` : inline(l)))}</p>`)}`;
+
+const fmtSize = (bytes: number) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
+
 /** Descripción para buscadores: primer texto disponible, recortado. */
 function describe(blocks: Block[], fallback: string): string {
   for (const b of blocks) {
@@ -37,23 +45,54 @@ function describe(blocks: Block[], fallback: string): string {
 
 const external = (url: string) => /^https?:/i.test(url);
 
-/** Bloques de contenido → HTML (con escape). Mismo modelo que editará el panel en la Fase 8. */
-export function renderBlocks(blocks: Block[], opts: { pills?: boolean } = {}): Raw {
-  return h`${blocks.map((b) => {
+export interface RenderOpts { media?: MediaMap; whatsapp?: string | null; pills?: boolean }
+
+/** Bloques de contenido → HTML (con escape). Mismo modelo que se edita en el panel (Web → Páginas). */
+export function renderBlocks(blocks: Block[], opts: RenderOpts = {}): Raw {
+  const media = opts.media ?? new Map();
+  return h`${blocks.filter((b) => !b.hidden).map((b) => {
     switch (b.type) {
       case "heading": return h`<h2>${b.text}</h2>`;
-      case "paragraph": return paragraphs(b.text);
-      case "list": return opts.pills ? h`<ul class="pills">${b.items.map((i) => h`<li>${i}</li>`)}</ul>` : h`<ul class="bul">${b.items.map((i) => h`<li>${i}</li>`)}</ul>`;
+      case "paragraph": return richParagraphs(b.text);
+      case "list": return b.style === "pills" ? h`<ul class="pills">${b.items.map((i) => h`<li>${i}</li>`)}</ul>` : h`<ul class="bul">${b.items.map((i) => h`<li>${inline(i)}</li>`)}</ul>`;
       case "steps": return h`<ol class="steps">${b.items.map((s, i) => h`<li><span class="n" aria-hidden="true">${i + 1}</span><div><b>${s.title}</b><p>${s.text}</p></div></li>`)}</ol>`;
-      case "callout": return h`<div class="callout">${b.text}</div>`;
-      case "button": return h`<p><a class="btn primary" href="${b.url}"${external(b.url) ? raw(' target="_blank" rel="noopener"') : ""}>${b.label}</a></p>`;
-      case "document": return h`<a class="doc" href="${b.url}"${external(b.url) ? raw(' target="_blank" rel="noopener"') : raw(" download")}>${ICON.doc}${b.label}</a>`;
+      case "callout": return h`<div class="callout">${inline(b.text)}</div>`;
+      case "button": {
+        const url = b.url === "whatsapp" ? opts.whatsapp ?? null : b.url;
+        if (!url) return h``;
+        return h`<p><a class="btn ${b.url === "whatsapp" ? "wa" : "primary"}" href="${url}"${external(url) ? raw(' target="_blank" rel="noopener"') : ""}>${b.url === "whatsapp" ? ICON.whatsapp : ""}${b.label}</a></p>`;
+      }
+      case "document": {
+        const file = b.mediaId ? media.get(b.mediaId) : undefined;
+        const url = file?.url ?? b.url;
+        if (!url) return h``;
+        return h`<a class="doc" href="${url}"${file ? raw(" download") : external(url) ? raw(' target="_blank" rel="noopener"') : ""}>${ICON.doc}<span>${b.label}${file ? h` <small class="nick">PDF · ${fmtSize(file.bytes)}</small>` : ""}</span></a>`;
+      }
+      case "image": {
+        const file = media.get(b.mediaId);
+        if (!file) return h``;
+        return h`<figure><img src="${file.url}" alt="${b.alt || file.alt || ""}" loading="lazy"${file.width ? h` width="${file.width}" height="${file.height}"` : ""}>${b.caption ? h`<figcaption>${b.caption}</figcaption>` : ""}</figure>`;
+      }
+      case "gallery": {
+        const files = b.mediaIds.map((id) => media.get(id)).filter((f): f is NonNullable<typeof f> => !!f && f.kind === "imagen");
+        if (!files.length) return h``;
+        return h`<figure><div class="gallery">${files.map((f) => h`<a href="${f.url}" target="_blank" rel="noopener"><img src="${f.url}" alt="${f.alt || ""}" loading="lazy"${f.width ? h` width="${f.width}" height="${f.height}"` : ""}></a>`)}</div>${b.caption ? h`<figcaption>${b.caption}</figcaption>` : ""}</figure>`;
+      }
+      // El banner y las secciones automáticas sólo existen en el inicio (ver homePage).
+      case "hero":
+      case "section":
+        return h``;
     }
   })}`;
 }
 
 function empty(title: string, text: string | Raw, action?: Raw): Raw {
   return h`<div class="card empty"><b>${title}</b>${text}${action ? h`<div class="actions" style="justify-content:center">${action}</div>` : ""}</div>`;
+}
+
+/** Bloques opcionales de la introducción de una sección (Torneos, Rankings, Calendario, Novedades). */
+export function introBlocks(intro: SitePage | null, opts: RenderOpts = {}): Raw {
+  return intro && intro.blocks.some((b) => !b.hidden) ? h`<section class="prose" style="margin-bottom:18px">${renderBlocks(intro.blocks, opts)}</section>` : h``;
 }
 
 export function tournamentCard(ctx: PageCtx, t: PublicTournament): Raw {
@@ -66,14 +105,14 @@ export function tournamentCard(ctx: PageCtx, t: PublicTournament): Raw {
 
 const tgrid = (ctx: PageCtx, list: PublicTournament[]) => h`<div class="tgrid">${list.map((t) => tournamentCard(ctx, t))}</div>`;
 
-function venueCard(ctx: PageCtx, opts: { map?: boolean } = {}): Raw {
+function venueCard(ctx: PageCtx, opts: { map?: boolean; photoUrl?: string | null } = {}): Raw {
   const s = ctx.site;
   if (!s.venueName && !s.address) return h``;
   const maps = mapsUrl(ctx);
   const ig = instagramUrl(ctx);
   const embed = opts.map && s.mapLat !== null && s.mapLng !== null
     ? h`<iframe class="map" title="Mapa: ${s.venueName || s.address}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="${`https://www.google.com/maps?q=${s.mapLat},${s.mapLng}&z=16&output=embed`}"></iframe>`
-    : h`<img src="/web/sede-las-vias.webp" alt="Vista aérea de ${s.venueName || "la sede"}" width="900" height="1124" loading="lazy">`;
+    : h`<img src="${opts.photoUrl || "/web/sede-las-vias.webp"}" alt="Vista de ${s.venueName || "la sede"}" loading="lazy">`;
   return h`<div class="card venue">${embed}<div class="pad">
 <p class="kicker">Sede</p><h3>${s.venueName}</h3>
 <p class="sub">${ICON.pin} ${s.address}</p>
@@ -87,45 +126,116 @@ export interface HomeData {
   upcoming: PublicTournament[];
   inProgress: PublicTournament[];
   featured: PublicTournament[];
+  all: PublicTournament[];
   posts: PublicPost[];
   season: PublicSeason | null;
   refs: PublicRankingRef[];
+  sponsors: PublicSponsor[];
+  media: MediaMap;
+}
+
+/** Si el inicio no tiene banner o secciones (p. ej., una base anterior), se usan éstos. */
+const DEFAULT_HERO: Extract<Block, { type: "hero" }> = {
+  type: "hero", title: "Padel Time", subtitle: "", mediaId: null,
+  buttons: [{ label: "Inscribite por WhatsApp", url: "whatsapp" }, { label: "Ver torneos", url: "/torneos" }, { label: "Rankings", url: "/rankings" }],
+};
+const DEFAULT_SECTIONS: Extract<Block, { type: "section" }>[] = [
+  { type: "section", kind: "featured_tournament", title: "Próximo torneo destacado" },
+  { type: "section", kind: "in_progress", title: "Torneos en curso" },
+  { type: "section", kind: "upcoming", title: "Próximos torneos" },
+  { type: "section", kind: "featured", title: "Torneos destacados" },
+  { type: "section", kind: "news", title: "Últimas novedades" },
+  { type: "section", kind: "rankings", title: "Rankings" },
+  { type: "section", kind: "sponsors", title: "Patrocinadores" },
+  { type: "section", kind: "venue", title: "Dónde jugamos" },
+];
+
+function heroHtml(ctx: PageCtx, b: Extract<Block, { type: "hero" }>, media: MediaMap): Raw {
+  const img = (b.mediaId && media.get(b.mediaId)?.url) || "/web/portada-jugador.webp";
+  const wa = whatsappUrl(ctx.site.whatsapp, ctx.site.whatsappMessage);
+  const buttons = b.buttons.map((btn, i) => {
+    if (btn.url === "whatsapp") return wa ? h`<a class="btn wa lg" href="${wa}" target="_blank" rel="noopener">${ICON.whatsapp}${btn.label}</a>` : h``;
+    return h`<a class="btn ${i === 0 ? "primary" : "light"} lg" href="${btn.url}"${external(btn.url) ? raw(' target="_blank" rel="noopener"') : ""}>${btn.label}</a>`;
+  });
+  return h`<section class="cover" style="background-image:url(${img})"><div class="in">
+<img class="logo" src="/brand/padeltime-simbolo.png" alt="" width="92" height="92">
+<h1>${b.title}</h1>
+${b.subtitle ? h`<p class="tag">${b.subtitle}</p>` : ""}
+${buttons.length ? h`<div class="ctas">${buttons}</div>` : ""}
+</div></section>`;
+}
+
+function sectionHtml(ctx: PageCtx, b: Extract<Block, { type: "section" }>, d: HomeData): Raw {
+  const head = (link?: Raw) => h`<div class="sec-head"><h2>${b.title}</h2>${link ?? ""}</div>`;
+  switch (b.kind) {
+    case "featured_tournament": {
+      const chosen = b.tournamentId ? d.all.find((t) => t.id === b.tournamentId && t.status !== "cancelado" && t.status !== "finalizado") : undefined;
+      const t = chosen ?? d.upcoming.find((x) => x.featured) ?? d.upcoming[0];
+      if (!t) return h``;
+      const cat = categoryLabel(ctx, t);
+      return h`<section>${head()}<div class="featured-t"><div><p class="kicker">${[t.series ? SERIES_LABEL[t.series] : null, STATUS_LABEL[t.status]].filter(Boolean).join(" · ")}</p><h3>${t.name}</h3><p>${cat} · ${fmtRange(t.startDate, t.endDate)}${t.venue ? ` · ${t.venue}` : ""}</p></div>
+<div class="actions"><a class="btn light lg" href="${tournamentPath(t)}">Ver torneo</a>${t.registrationOpen ? waButton(ctx, "Inscribirme", `Hola! Quiero inscribirme al torneo ${t.name} (${cat}).`, "lg") : ""}</div></div></section>`;
+    }
+    case "in_progress":
+      return d.inProgress.length ? h`<section>${head(h`<a href="/torneos?estado=en-curso">Ver todos</a>`)}${tgrid(ctx, d.inProgress.slice(0, 6))}</section>` : h``;
+    case "upcoming":
+      return h`<section>${head(h`<a href="/torneos">Ver todos los torneos</a>`)}${d.upcoming.length ? tgrid(ctx, d.upcoming.slice(0, 6)) : empty("Todavía no hay torneos próximos publicados", h`<p>Cuando se programe el próximo torneo vas a verlo acá.</p>`, h`<a class="btn" href="/calendario">Ver calendario</a>${waButton(ctx, "Consultar por WhatsApp")}`)}</section>`;
+    case "featured":
+      return d.featured.length ? h`<section>${head()}${tgrid(ctx, d.featured.slice(0, 3))}</section>` : h``;
+    case "news":
+      return h`<section>${head(d.posts.length ? h`<a href="/novedades">Ver todas</a>` : undefined)}${d.posts.length ? newsGrid(d.posts, d.media) : empty("Sin novedades publicadas", h`<p>Las noticias del circuito se publican acá.</p>`)}</section>`;
+    case "rankings":
+      return h`<section>${head(h`<a href="/rankings">Todos los rankings</a>`)}${d.refs.length ? h`<div class="grid">${d.refs.filter((r) => r.divisionId === null).map((r) => h`<a class="tile" href="${rankingPath(r)}"><b>${rankingName(r, multiGender(ctx))}</b><small>${d.season ? `${d.season.name} · ` : ""}${r.players} jugador${r.players === 1 ? "" : "es"}</small></a>`)}</div>` : empty("Rankings en preparación", h`<p>Los rankings aparecen en cuanto se cargan puntos de la temporada.</p>`)}</section>`;
+    case "sponsors":
+      return d.sponsors.length ? h`<section>${head()}${sponsorsGrid(d.sponsors, d.media)}</section>` : h``;
+    case "venue":
+      return h`<section>${head(h`<a href="/contacto">Contacto e inscripciones</a>`)}${venueCard(ctx, { photoUrl: ctx.site.venueMediaId ? d.media.get(ctx.site.venueMediaId)?.url : null })}</section>`;
+  }
+}
+
+export function sponsorsGrid(list: PublicSponsor[], media: MediaMap): Raw {
+  return h`<div class="sponsors">${list.map((s) => {
+    const logo = media.get(s.mediaId);
+    const img = logo ? h`<img src="${logo.url}" alt="${s.name}" loading="lazy">` : h`<b>${s.name}</b>`;
+    return s.url ? h`<a href="${s.url}" target="_blank" rel="noopener sponsored" title="${s.name}">${img}</a>` : h`<span title="${s.name}">${img}</span>`;
+  })}</div>`;
+}
+
+function newsGrid(posts: PublicPost[], media: MediaMap): Raw {
+  return h`<div class="tgrid">${posts.map((p) => {
+    const cover = p.coverMediaId ? media.get(p.coverMediaId) : undefined;
+    return h`<a class="tcard" href="/novedades/${p.slug}">${cover ? h`<img src="${cover.url}" alt="" loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">` : ""}<div class="body"><p class="kicker">${fmtDate(p.publishedAt)}</p><h3>${p.title}</h3>${p.excerpt ? h`<p>${p.excerpt}</p>` : ""}</div></a>`;
+  })}</div>`;
 }
 
 export function homePage(ctx: PageCtx, d: HomeData): string {
-  const tagline = d.page?.title || ctx.site.tagline;
-  const cover = h`<section class="cover" style="background-image:url(/web/portada-jugador.webp)"><div class="in">
-<img class="logo" src="/brand/padeltime-simbolo.png" alt="" width="92" height="92">
-<h1>${ctx.title}</h1>
-${tagline ? h`<p class="tag">${tagline}</p>` : ""}
-<div class="ctas">${waButton(ctx, "Inscribite por WhatsApp", undefined, "lg")}<a class="btn light lg" href="/torneos">Ver torneos</a><a class="btn light lg" href="/rankings">Rankings</a></div>
-</div></section>`;
-  const body = h`
-${d.page && d.page.blocks.length ? h`<section class="prose" aria-label="Presentación">${renderBlocks(d.page.blocks, { pills: true })}</section>` : ""}
-
-${d.inProgress.length ? h`<section><div class="sec-head"><h2>Torneos en curso</h2><a href="/torneos?estado=en-curso">Ver todos</a></div>${tgrid(ctx, d.inProgress.slice(0, 6))}</section>` : ""}
-
-<section><div class="sec-head"><h2>Próximos torneos</h2><a href="/torneos">Ver todos los torneos</a></div>
-${d.upcoming.length ? tgrid(ctx, d.upcoming.slice(0, 6)) : empty("Todavía no hay torneos próximos publicados", h`<p>Cuando se programe el próximo torneo vas a verlo acá.</p>`, h`<a class="btn" href="/calendario">Ver calendario</a>${waButton(ctx, "Consultar por WhatsApp")}`)}
-</section>
-
-${d.featured.length ? h`<section><div class="sec-head"><h2>Torneos destacados</h2></div>${tgrid(ctx, d.featured.slice(0, 3))}</section>` : ""}
-
-<section><div class="sec-head"><h2>Últimas novedades</h2>${d.posts.length ? h`<a href="/novedades">Ver todas</a>` : ""}</div>
-${d.posts.length ? h`<div class="grid">${d.posts.map((p) => h`<a class="tile" href="/novedades/${p.slug}"><small>${fmtDate(p.publishedAt)}</small><b>${p.title}</b>${p.excerpt ? h`<small>${p.excerpt}</small>` : ""}</a>`)}</div>` : empty("Sin novedades publicadas", h`<p>Las noticias del circuito se publican acá.</p>`)}
-</section>
-
-<section><div class="sec-head"><h2>Rankings ${d.season ? d.season.name : ""}</h2><a href="/rankings">Todos los rankings</a></div>
-${d.refs.length ? h`<div class="grid">${d.refs.filter((r) => r.divisionId === null).map((r) => h`<a class="tile" href="${rankingPath(r)}"><b>${rankingName(r, multiGender(ctx))}</b><small>${r.players} jugador${r.players === 1 ? "" : "es"}</small></a>`)}</div>` : empty("Rankings en preparación", h`<p>Los rankings aparecen en cuanto se cargan puntos de la temporada.</p>`)}
-</section>
-
-<section><div class="sec-head"><h2>Dónde jugamos</h2><a href="/contacto">Contacto e inscripciones</a></div>${venueCard(ctx)}</section>
-`;
+  const blocks = (d.page?.blocks ?? []).filter((b) => !b.hidden);
+  const all = d.page?.blocks ?? [];
+  const opts: RenderOpts = { media: d.media, whatsapp: whatsappUrl(ctx.site.whatsapp, ctx.site.whatsappMessage), pills: true };
+  const heroBlock = (all.find((b) => b.type === "hero") as Extract<Block, { type: "hero" }> | undefined);
+  // Banner: el configurado (si está oculto, no se muestra); si no hay ninguno, el predeterminado.
+  const cover = heroBlock ? (heroBlock.hidden ? h`` : heroHtml(ctx, heroBlock, d.media)) : heroHtml(ctx, { ...DEFAULT_HERO, subtitle: ctx.site.tagline }, d.media);
+  const parts: Raw[] = [];
+  let buffer: Block[] = [];
+  const flush = () => {
+    if (buffer.length) parts.push(h`<section class="prose" aria-label="Información">${renderBlocks(buffer, opts)}</section>`);
+    buffer = [];
+  };
+  for (const b of blocks) {
+    if (b.type === "hero") continue;
+    if (b.type === "section") {
+      flush();
+      parts.push(sectionHtml(ctx, b, d));
+    } else buffer.push(b);
+  }
+  flush();
+  if (!all.some((b) => b.type === "section")) for (const sct of DEFAULT_SECTIONS) parts.push(sectionHtml(ctx, sct, d));
+  const tagline = heroBlock?.subtitle || ctx.site.tagline;
   const ig = instagramUrl(ctx);
   return layout(ctx, {
-    title: ctx.title, section: "inicio", cover, body, canonical: "/",
-    description: d.page ? describe(d.page.blocks, `${ctx.title}: ${tagline}`) : `${ctx.title}: ${tagline}. Torneos, rankings y calendario.`,
-    ogImage: "/web/portada-jugador.webp",
+    title: ctx.title, section: "inicio", cover, body: h`${parts}`, canonical: "/",
+    description: d.page?.seoDescription || (d.page ? describe(d.page.blocks, `${ctx.title}: ${tagline}`) : `${ctx.title}: ${tagline}. Torneos, rankings y calendario.`),
+    ogImage: (heroBlock?.mediaId && d.media.get(heroBlock.mediaId)?.url) || "/web/portada-jugador.webp",
     jsonLd: {
       "@context": "https://schema.org", "@type": "SportsOrganization", name: ctx.title, sport: "Padel", url: `${ctx.origin}/`,
       logo: `${ctx.origin}/brand/icon-512.png`, ...(ig ? { sameAs: [ig] } : {}),
@@ -145,7 +255,7 @@ export type TournamentTab = (typeof TOURNAMENT_TABS)[number]["key"];
 
 export interface TournamentFilters { tab: TournamentTab; seasonId: number | null; categoryId: number | null; series: Series | null }
 
-export function tournamentsPage(ctx: PageCtx, all: PublicTournament[], list: PublicTournament[], f: TournamentFilters): string {
+export function tournamentsPage(ctx: PageCtx, all: PublicTournament[], list: PublicTournament[], f: TournamentFilters, intro: SitePage | null = null, opts: RenderOpts = {}): string {
   const qs = (over: Partial<Record<string, string | null>>) => {
     const p = new URLSearchParams();
     const cur: Record<string, string | null> = {
@@ -180,7 +290,7 @@ export function tournamentsPage(ctx: PageCtx, all: PublicTournament[], list: Pub
   } else {
     results = tgrid(ctx, list);
   }
-  const body = h`
+  const body = h`${introBlocks(intro, opts)}
 <nav class="chips" aria-label="Estado de los torneos">${TOURNAMENT_TABS.map((t) => h`<a class="chip${f.tab === t.key ? " on" : ""}" href="${qs({ estado: t.key === "proximos" ? null : t.key })}"${f.tab === t.key ? raw(' aria-current="page"') : ""}>${t.label}</a>`)}</nav>
 ${all.length ? h`<form class="tools" method="get" action="/torneos" role="search" aria-label="Filtrar torneos">
   ${f.tab !== "proximos" ? h`<input type="hidden" name="estado" value="${f.tab}">` : ""}
@@ -195,8 +305,8 @@ ${results}
   return layout(ctx, {
     title: f.tab === "proximos" ? "Torneos" : `Torneos: ${tabLabel.toLowerCase()}`, section: "torneos", body,
     canonical: f.tab === "proximos" && !anyFilter ? "/torneos" : qs({}),
-    description: `Torneos de ${ctx.title}: próximos, en curso y finalizados, con información, resultados e inscripción.`,
-    heading: { kicker: ctx.title, title: "Torneos", sub: "Open, Challenger, Satélites y Master: fechas, categorías, resultados e inscripción." },
+    description: intro?.seoDescription || intro?.summary || `Torneos de ${ctx.title}: próximos, en curso y finalizados, con información, resultados e inscripción.`,
+    heading: { kicker: ctx.title, title: intro?.title ?? "Torneos", sub: intro?.summary ?? undefined },
   });
 }
 
@@ -266,7 +376,7 @@ ${t.status === "finalizado" ? h`<p class="note">El resultado final se publica cu
 // ─────────────────────────── Calendario ───────────────────────────
 interface CalItem { date: string; endDate: string; title: string; href: string | null; kind: string; label: string; time: string | null }
 
-export function calendarPage(ctx: PageCtx, month: string, tournaments: PublicTournament[], events: PublicEvent[]): string {
+export function calendarPage(ctx: PageCtx, month: string, tournaments: PublicTournament[], events: PublicEvent[], intro: SitePage | null = null, opts: RenderOpts = {}): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
   const first = `${month}-01`;
   const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -291,7 +401,7 @@ export function calendarPage(ctx: PageCtx, month: string, tournaments: PublicTou
     const text = `${x.item.time ? `${x.item.time} ` : ""}${x.item.title}${x.end ? " (final)" : ""}`;
     return x.item.href ? h`<a class="ev ${x.item.kind}" href="${x.item.href}" title="${text}">${text}</a>` : h`<span class="ev ${x.item.kind}" title="${text}">${text}</span>`;
   };
-  const body = h`
+  const body = h`${introBlocks(intro, opts)}
 <div class="cal-nav"><a class="btn" href="/calendario?mes=${prev}" rel="nofollow">← <span class="hide-sm">Anterior</span></a><b>${fmtMonthYear(first)}</b><a class="btn" href="/calendario?mes=${next}" rel="nofollow"><span class="hide-sm">Siguiente</span> →</a></div>
 <div class="cal-desktop"><table class="cal" aria-label="Calendario de ${fmtMonthYear(first)}">
 <thead><tr>${["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => h`<th scope="col">${d}</th>`)}</tr></thead>
@@ -306,14 +416,14 @@ ${items.length ? h`<div class="card agenda">${items.map((it) => {
   return layout(ctx, {
     title: `Calendario ${fmtMonthYear(first)}`, section: "calendario", body, canonical: month === ctx.today.slice(0, 7) ? "/calendario" : `/calendario?mes=${month}`,
     description: `Calendario de ${ctx.title}: torneos, canchas abiertas y eventos de ${fmtMonthYear(first)}.`,
-    heading: { kicker: ctx.title, title: "Calendario", sub: "Torneos y eventos del circuito." },
+    heading: { kicker: ctx.title, title: intro?.title ?? "Calendario", sub: intro?.summary ?? undefined },
   });
 }
 
 // ─────────────────────────── Páginas de contenido ───────────────────────────
-export function contentPage(ctx: PageCtx, page: SitePage, section: "reglamentos" | "liga" | "cancha-abierta" | "premios", extra: Raw, opts: { print?: boolean; sub?: string } = {}): string {
+export function contentPage(ctx: PageCtx, page: SitePage, section: "reglamentos" | "liga" | "cancha-abierta" | "premios", extra: Raw, opts: { print?: boolean; sub?: string } & RenderOpts = {}): string {
   const body = h`<div class="two">
-<article class="prose">${page.blocks.length ? renderBlocks(page.blocks) : ""}${opts.print ? h`<p class="no-print"><button class="btn" type="button" data-print hidden>${ICON.doc}Imprimir o guardar en PDF</button></p>` : ""}</article>
+<article class="prose">${page.blocks.length ? renderBlocks(page.blocks, opts) : ""}${opts.print ? h`<p class="no-print"><button class="btn" type="button" data-print hidden>${ICON.doc}Imprimir o guardar en PDF</button></p>` : ""}</article>
 <aside>${extra}</aside>
 </div>`;
   return layout(ctx, {
@@ -338,12 +448,12 @@ export function prizesList(ctx: PageCtx, list: PublicTournament[]): Raw {
 }
 
 // ─────────────────────────── Contacto ───────────────────────────
-export function contactPage(ctx: PageCtx, page: SitePage | null): string {
+export function contactPage(ctx: PageCtx, page: SitePage | null, opts: RenderOpts = {}): string {
   const ig = instagramUrl(ctx);
   const body = h`
-${page && page.blocks.length ? h`<div class="prose">${renderBlocks(page.blocks)}</div>` : ""}
+${page && page.blocks.length ? h`<div class="prose">${renderBlocks(page.blocks, opts)}</div>` : ""}
 <div class="two">
-  <div>${ctx.site.venueName || ctx.site.address ? venueCard(ctx, { map: true }) : empty("Sede a confirmar", h`<p>Pronto vas a encontrar acá la ubicación.</p>`)}</div>
+  <div>${ctx.site.venueName || ctx.site.address ? venueCard(ctx, { map: true, photoUrl: ctx.site.venueMediaId ? opts.media?.get(ctx.site.venueMediaId)?.url : null }) : empty("Sede a confirmar", h`<p>Pronto vas a encontrar acá la ubicación.</p>`)}</div>
   <aside>
     <div class="card pad">
       <h3>Inscripciones</h3>
@@ -364,16 +474,17 @@ ${page && page.blocks.length ? h`<div class="prose">${renderBlocks(page.blocks)}
 }
 
 // ─────────────────────────── Novedades ───────────────────────────
-export function newsListPage(ctx: PageCtx, posts: PublicPost[]): string {
-  const body = posts.length
-    ? h`<div class="grid">${posts.map((p) => h`<a class="tile" href="/novedades/${p.slug}"><small>${fmtDate(p.publishedAt)}</small><b>${p.title}</b>${p.excerpt ? h`<small>${p.excerpt}</small>` : ""}</a>`)}</div>`
-    : empty("Sin novedades publicadas", h`<p>Las noticias del circuito se publican acá.</p>`, h`<a class="btn" href="/torneos">Ver torneos</a>`);
-  return layout(ctx, { title: "Novedades", section: "novedades", body, canonical: "/novedades", description: `Novedades del circuito ${ctx.title}.`, heading: { kicker: ctx.title, title: "Novedades" } });
+export function newsListPage(ctx: PageCtx, posts: PublicPost[], intro: SitePage | null = null, opts: RenderOpts = {}): string {
+  const body = h`${introBlocks(intro, opts)}${posts.length
+    ? newsGrid(posts, opts.media ?? new Map())
+    : empty("Sin novedades publicadas", h`<p>Las noticias del circuito se publican acá.</p>`, h`<a class="btn" href="/torneos">Ver torneos</a>`)}`;
+  return layout(ctx, { title: intro?.title ?? "Novedades", section: "novedades", body, canonical: "/novedades", description: intro?.summary || `Novedades del circuito ${ctx.title}.`, heading: { kicker: ctx.title, title: intro?.title ?? "Novedades", sub: intro?.summary ?? undefined } });
 }
 
-export function newsPage(ctx: PageCtx, p: PublicPost): string {
-  const body = h`<article class="prose" style="max-width:760px">${p.excerpt ? h`<p class="sub">${p.excerpt}</p>` : ""}${renderBlocks(p.blocks)}</article><p class="note"><a href="/novedades">← Todas las novedades</a></p>`;
-  return layout(ctx, { title: p.title, section: "novedades", body, canonical: `/novedades/${p.slug}`, description: p.excerpt || describe(p.blocks, p.title), heading: { kicker: fmtDate(p.publishedAt), title: p.title } });
+export function newsPage(ctx: PageCtx, p: PublicPost, opts: RenderOpts = {}): string {
+  const cover = p.coverMediaId ? opts.media?.get(p.coverMediaId) : undefined;
+  const body = h`<article class="prose" style="max-width:760px">${cover ? h`<figure><img src="${cover.url}" alt="${cover.alt || ""}"${cover.width ? h` width="${cover.width}" height="${cover.height}"` : ""}></figure>` : ""}${p.excerpt ? h`<p class="sub">${p.excerpt}</p>` : ""}${renderBlocks(p.blocks, opts)}</article><p class="note"><a href="/novedades">← Todas las novedades</a></p>`;
+  return layout(ctx, { title: p.title, section: "novedades", body, canonical: `/novedades/${p.slug}`, description: p.excerpt || describe(p.blocks, p.title), heading: { kicker: fmtDate(p.publishedAt), title: p.title }, ogImage: cover?.url });
 }
 
 // ─────────────────────────── 404 ───────────────────────────

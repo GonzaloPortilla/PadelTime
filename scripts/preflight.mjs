@@ -15,6 +15,10 @@ const db = config.d1_databases?.[0];
 if (!db?.database_id || /^0{8}-0{4}-0{4}-0{4}-0{12}$/.test(db.database_id)) {
   problems.push("Falta el database_id real en wrangler.jsonc. Creá la base con `npx wrangler d1 create padel-time` y pegá el ID que devuelve.");
 }
+const kv = config.kv_namespaces?.find((k) => k.binding === "MEDIA");
+if (!kv?.id || /^0+$/.test(kv.id)) {
+  problems.push("Falta el id real del espacio de archivos (KV) en wrangler.jsonc. Crealo con `npx wrangler kv namespace create MEDIA` y pegá el id que devuelve.");
+}
 const iterations = Number(config.vars?.PBKDF2_ITERATIONS);
 if (!(iterations >= 10000 && iterations <= 100000)) problems.push("PBKDF2_ITERATIONS debe estar entre 10000 y 100000 (recomendado 30000 en el plan gratuito).");
 const ttl = Number(config.vars?.SESSION_TTL_DAYS);

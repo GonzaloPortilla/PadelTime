@@ -56,7 +56,15 @@ npx wrangler whoami
 npx wrangler d1 create padel-time
 ```
 
-Copiá el `database_id` que aparece y pegalo en `wrangler.jsonc`, en lugar de `00000000-0000-0000-0000-000000000000`. Comprobá la configuración:
+Copiá el `database_id` que aparece y pegalo en `wrangler.jsonc`, en lugar de `00000000-0000-0000-0000-000000000000`.
+
+Creá también el espacio para las fotos y documentos de la web (Workers KV, gratis hasta 1 GB y sin tarjeta):
+
+```bash
+npx wrangler kv namespace create MEDIA
+```
+
+Copiá el `id` que devuelve y pegalo en `wrangler.jsonc`, en `kv_namespaces`, en lugar de `00000000000000000000000000000000`. Comprobá la configuración:
 
 ```bash
 npm run preflight

@@ -144,6 +144,27 @@ Detalles:
 
 ---
 
+## 7 bis. Contenidos de la web (Contenidos web)
+
+Desde **Contenidos web** se edita todo lo que se ve en la web, sin programar. Detalle técnico en `docs/CMS.md`.
+
+1. **Páginas:** elegí la página (Inicio, Reglamentos, Liga…), cambiá los textos y los bloques.
+   - **Guardar borrador** guarda sin publicar.
+   - **Vista previa** muestra cómo va a quedar.
+   - **Publicar** lo deja visible en la web al instante.
+2. **Inicio:** el **banner** (título, frase, foto y botones), las secciones informativas y el **orden** de las secciones automáticas (torneos, novedades, rankings, patrocinadores, sede).
+   - El ojo oculta un bloque sin borrarlo.
+   - En "Próximo torneo destacado" podés elegir el torneo o dejarlo automático.
+3. **Novedades:** **Nueva novedad** → escribí → publicá. Para sacarla de la web, **Ocultar** (sólo un administrador puede borrarla).
+4. **Multimedia:** subí fotos (se optimizan solas) y PDF.
+   - Completá el **texto alternativo**: describe la imagen para buscadores y lectores de pantalla.
+   - Un archivo en uso no se puede borrar.
+5. **Patrocinadores:** logo, nombre y enlace, en el orden que quieras.
+6. **Calendario:** cargá las **canchas abiertas** y otros eventos. Aparecen en el calendario y en la página Cancha abierta.
+7. **Datos de la web:** WhatsApp (el número de los botones de inscripción), Instagram, sede, foto de la sede y el **aviso destacado** con fecha de vencimiento.
+
+**Si dos organizadores editan lo mismo:** el segundo en guardar ve un aviso con quién guardó antes y un botón para recargar. Nada se pisa sin avisar. Toda versión anterior se puede **recuperar** desde **Historial de cambios**.
+
 ## 8. Publicación web y Google Sites
 
 - **Publicación web** (administrador): activar las páginas públicas, el título y qué temporadas se muestran.

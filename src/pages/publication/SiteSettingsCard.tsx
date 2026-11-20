@@ -8,6 +8,8 @@ import { keys, useSiteSettings } from "@/hooks/data";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, FormError, TextField } from "@/components/ui/Field";
 import { Card, CardHeader, Spinner } from "@/components/ui/misc";
+import { MediaField } from "../web/media";
+import { RotateCcw } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
 interface FormState extends Omit<SiteSettings, "mapLat" | "mapLng"> { mapLat: string; mapLng: string }
@@ -35,7 +37,8 @@ export function SiteSettingsCard() {
     },
   });
   if (!form || !site.data) return <Card><Spinner className="py-8" /></Card>;
-  const readOnly = user?.role !== "admin";
+  const isAdmin = user?.role === "admin";
+  const conflict = save.error instanceof ApiError && save.error.status === 409;
   const dirty = JSON.stringify(form) !== JSON.stringify(toForm(site.data));
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm({ ...form, [k]: v });
   const fieldErrors = save.error instanceof ApiError ? save.error.fields : {};
@@ -43,8 +46,8 @@ export function SiteSettingsCard() {
 
   return (
     <Card>
-      <CardHeader title="Datos de la web" subtitle={readOnly ? "Sólo un administrador puede cambiarlos." : "Contacto, sede y aviso destacado. Los cambios se ven en la web de inmediato."} />
-      <fieldset disabled={readOnly} className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
+      <CardHeader title="Datos de la web" subtitle="Contacto, sede y aviso destacado. Los cambios se ven en la web de inmediato." />
+      <fieldset className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
         <TextField label="Frase de presentación" value={form.tagline} maxLength={120} onChange={(e) => set("tagline", e.target.value)} error={fieldErrors.tagline} />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField label="WhatsApp" inputMode="tel" placeholder="5491112345678" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)}
@@ -59,25 +62,28 @@ export function SiteSettingsCard() {
           <TextField label="Latitud (mapa)" inputMode="decimal" value={form.mapLat} onChange={(e) => set("mapLat", e.target.value)} error={fieldErrors.mapLat} />
           <TextField label="Longitud (mapa)" inputMode="decimal" value={form.mapLng} onChange={(e) => set("mapLng", e.target.value)} error={fieldErrors.mapLng} />
         </div>
+        <MediaField label="Foto de la sede" kind="imagen" value={form.venueMediaId || null} onChange={(id) => set("venueMediaId", id ?? "")} hint="Sin foto elegida se usa la vista aérea actual de Las Vías Padel Center." />
         <div className="rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-200">
           <p className="text-sm font-semibold text-slate-800">Aviso destacado</p>
           <p className="mb-3 text-xs text-slate-500">Franja verde arriba de todas las páginas (por ejemplo, el próximo torneo). Vacío = no se muestra.</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <TextField label="Texto" value={form.announcementText} maxLength={200} onChange={(e) => set("announcementText", e.target.value)} error={fieldErrors.announcementText} />
             <TextField label="Enlace (opcional)" placeholder="/torneos o https://…" value={form.announcementUrl} onChange={(e) => set("announcementUrl", e.target.value)} error={fieldErrors.announcementUrl} />
+            <TextField label="Mostrar hasta (opcional)" type="date" value={form.announcementUntil} onChange={(e) => set("announcementUntil", e.target.value)} error={fieldErrors.announcementUntil} hint="Pasada esa fecha se oculta solo." />
           </div>
         </div>
         <div>
           <p className="text-sm font-medium text-slate-700">Ramas activas</p>
-          <p className="mb-2 text-xs text-slate-500">Una rama inactiva no se muestra en la web ni se ofrece al crear categorías, jugadores o torneos. Sus datos históricos se conservan.</p>
-          <div className="flex flex-wrap gap-4">
+          <p className="mb-2 text-xs text-slate-500">Una rama inactiva no se muestra en la web ni se ofrece al crear categorías, jugadores o torneos. Sus datos históricos se conservan.{!isAdmin && " Sólo un administrador puede cambiarlas."}</p>
+          <fieldset disabled={!isAdmin} className="flex flex-wrap gap-4">
             {(["M", "F"] as const).map((g) => (
               <Checkbox key={g} label={GENDER_LABEL[g]} checked={form.activeGenders.includes(g)} onChange={(v) => toggleGender(g, v)} />
             ))}
-          </div>
+          </fieldset>
         </div>
         <FormError message={save.error?.message ?? null} />
-        {!readOnly && <Button loading={save.isPending} disabled={!dirty || form.activeGenders.length === 0} onClick={() => save.mutate(form)}>Guardar datos de la web</Button>}
+        {conflict && <Button variant="secondary" icon={<RotateCcw className="size-4" />} onClick={() => { save.reset(); void qc.invalidateQueries({ queryKey: keys.site }); }}>Recargar los datos actuales</Button>}
+        <Button loading={save.isPending} disabled={!dirty || form.activeGenders.length === 0 || conflict} onClick={() => save.mutate(form)}>Guardar datos de la web</Button>
       </fieldset>
     </Card>
   );

@@ -2,6 +2,8 @@ import { GENDER_LABEL, TIEBREAKER_LABEL } from "@shared/constants";
 import { h, raw } from "./html";
 import type { PublicPlayer, PublicPlayerHit, PublicRanking, PublicRankingRef, PublicSeason } from "./data";
 import { fmtDate, fmtDateTime, fmtPts, layout, type PageCtx } from "./layout";
+import type { SitePage } from "./site-data";
+import { introBlocks, type RenderOpts } from "./site-pages";
 
 export type { PageCtx } from "./layout";
 
@@ -27,8 +29,8 @@ export const rankingName = (r: { categoryName: string; gender: keyof typeof GEND
 const showGender = (ctx: PageCtx) => ctx.site.activeGenders.length > 1;
 
 // ─────────────────────────── Índice ───────────────────────────
-export function indexPage(ctx: PageCtx, seasons: { season: PublicSeason; refs: PublicRankingRef[] }[]): string {
-  const body = h`
+export function indexPage(ctx: PageCtx, seasons: { season: PublicSeason; refs: PublicRankingRef[] }[], intro: SitePage | null = null, opts: RenderOpts = {}): string {
+  const body = h`${intro ? introBlocks(intro, opts) : ""}
 ${ctx.showHistory ? h`<form class="tools" action="${ctx.base}/jugadores" method="get">
   <input type="search" name="q" placeholder="Buscar jugador por nombre o apellido" aria-label="Buscar jugador" minlength="2">
   ${ctx.embed ? h`<input type="hidden" name="embed" value="1">` : ""}
@@ -44,7 +46,7 @@ ${refs.map((r) => h`<a class="tile" href="${withEmbed(rankingPath(r, undefined, 
   return layout(ctx, {
     title: "Rankings", section: "rankings", canonical: canonicalOf(ctx.path), body,
     description: `Rankings oficiales de ${ctx.title} por temporada y categoría, actualizados automáticamente al acreditar cada torneo.`,
-    heading: { kicker: ctx.title, title: "Rankings", sub: "Elegí la temporada y la categoría. Los puntos se actualizan en cuanto se acredita cada torneo." },
+    heading: { kicker: ctx.title, title: intro?.title ?? "Rankings", sub: intro?.summary ?? undefined },
   });
 }
 

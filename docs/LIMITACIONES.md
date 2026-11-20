@@ -12,6 +12,17 @@ Estado al cierre de la Fase 5B (noviembre de 2026). Ninguna afecta la integridad
 | **Sin alta disponibilidad garantizada** | Una caída de Cloudflare deja la app sin servicio mientras dure. | Los datos se conservan. Exportaciones a Excel como plan B para publicar. |
 | **Sin correo electrónico** | No hay "olvidé mi contraseña" por mail: los servicios de envío confiables tienen costo o requieren configurar un dominio. | Un administrador resetea la contraseña desde **Usuarios**, o por terminal con `npm run user:create -- --reset`. |
 
+## Gestor de contenidos (Fase 8)
+
+| Limitación | Detalle |
+|---|---|
+| **Espacio para archivos: 1 GB** (Workers KV gratis) y 1000 subidas por día | Con la optimización automática alcanza para miles de fotos. Si hiciera falta más, Cloudflare R2 da 10 GB gratis, pero exige registrar una tarjeta: no se activó. |
+| **Sin páginas nuevas arbitrarias** | Se editan las páginas de la web (Inicio, Reglamentos, Liga, Cancha abierta, Premios, Contacto e introducciones). Las noticias se publican como Novedades. Crear secciones nuevas en el menú requiere un cambio de código. |
+| **Vista previa** | Muestra lo último guardado: si hay cambios sin guardar, primero los guarda como borrador. |
+| **Edición simultánea** | No hay bloqueo mientras alguien edita: el segundo en guardar recibe un aviso y debe recargar (no se mezclan los cambios automáticamente). |
+| **Formato del texto** | Negrita, cursiva y enlaces. No hay tablas, colores ni tipografías libres (a propósito, para mantener el diseño y la seguridad). |
+| **Imágenes** | Sólo JPG, PNG y WebP; las animaciones (GIF) y SVG no se admiten. |
+
 ## Funcionales
 
 | Limitación | Detalle |

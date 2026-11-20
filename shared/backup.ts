@@ -28,9 +28,12 @@ export const BACKUP_TABLES = [
   "initial_balances",
   "bracket_imports",
   "audit_log",
+  "media",
   "site_pages",
   "site_posts",
+  "site_sponsors",
   "site_events",
+  "site_revisions",
   "app_settings",
 ] as const;
 export type BackupTable = (typeof BACKUP_TABLES)[number];

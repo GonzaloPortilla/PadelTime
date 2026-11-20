@@ -14,6 +14,10 @@
       "!/@vite/*", "!/@react-refresh", "!/@id/*", "!/@fs/*", "!/src/*", "!/node_modules/*", "!/shared/*"]
   },
 
+  // Archivos de la web (imágenes y PDF): Workers KV, gratis hasta 1 GB y sin tarjeta.
+  // Reemplazar por el ID que devuelve `npx wrangler kv namespace create MEDIA`.
+  "kv_namespaces": [{ "binding": "MEDIA", "id": "00000000000000000000000000000000" }],
+
   "d1_databases": [
     {
       "binding": "DB",

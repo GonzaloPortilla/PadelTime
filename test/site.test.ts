@@ -202,16 +202,16 @@ describe("web pública · contenidos y datos configurables", () => {
     expect(inicio).toContain("Sin novedades publicadas");
   });
 
-  it("los datos de la web los cambia sólo un administrador y se reflejan al instante", async () => {
+  it("contacto y avisos los edita un organizador; las ramas activas sólo un administrador; se reflejan al instante", async () => {
     const s = await setup();
     await createUser("orga", "clave-segura-456", "organizador");
     const org = new Client();
     await org.login("orga", "clave-segura-456");
     const site = (await org.get("/api/site")).json.settings;
     expect(site).toMatchObject({ whatsapp: "5491124065574", instagram: "padeltimeok", venueName: "Las Vías Padel Center" });
-    expect((await org.put("/api/site", site)).status).toBe(403);
+    expect((await org.put("/api/site", { ...site, activeGenders: ["M", "F"] })).status).toBe(403);
     expect((await s.client.put("/api/site", { ...site, announcementUrl: "javascript:alert(1)" })).status).toBe(400);
-    const ok = await s.client.put("/api/site", { ...site, announcementText: "Próximo torneo: Portugal P2 360", announcementUrl: "/torneos", whatsapp: "+54 9 11 2222-3333" });
+    const ok = await org.put("/api/site", { ...site, announcementText: "Próximo torneo: Portugal P2 360", announcementUrl: "/torneos", whatsapp: "+54 9 11 2222-3333" });
     expect(ok.status).toBe(200);
     expect(ok.json.settings.whatsapp).toBe("5491122223333");
     const home = (await get("/")).html;

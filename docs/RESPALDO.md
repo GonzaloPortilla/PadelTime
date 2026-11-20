@@ -29,6 +29,18 @@ Qué tiene en cuenta:
 - **Es confidencial:** tiene teléfonos, correos y documentos de jugadores, y las contraseñas *cifradas* de los organizadores. No lo compartas ni lo subas a carpetas públicas.
 - **Es seguro:** descargarlo no modifica nada. Queda registrado en la auditoría quién lo descargó.
 
+### Fotos, logos y documentos de la web (desde la Fase 8)
+
+Viven en Workers KV, fuera de la base de datos, así que el respaldo `.sql` no los incluye. En la misma pantalla, **Respaldo → Descargar multimedia (.zip)** baja todos los archivos con un índice (`manifest.json`). Guardalo junto al `.sql`.
+
+Para restaurarlos en una cuenta o espacio nuevo, después de restaurar la base:
+
+```bash
+node scripts/restore-media.mjs padel-time-multimedia-AAAA-MM-DD.zip
+```
+
+Agregá `--local` para probar la restauración en la base local.
+
 ### Desde la terminal (alternativa)
 
 ```bash
