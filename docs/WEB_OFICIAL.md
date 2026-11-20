@@ -408,10 +408,12 @@ No hay migraciones nuevas ni cambios en el código de la app: el esquema y el co
 | Premios, Liga, Cancha abierta | **No hacen falta páginas fijas**: los premios cambian según el torneo. | Premios por torneo (`prize_info`). Liga y Cancha abierta, sin páginas. |
 | Planillas de rankings 2026 | **Enviadas:** Caballeros C5, C6, C7 y C8. | Analizadas en la sección 11. |
 
-Quedan pendientes:
+| Planillas completas | **Sí**, son completas (20/11/2026). | Se importan tal cual. |
+| Agustín Barrera (C5 y C6) | **Sumar todo y dejarlo sólo en C5.** | 1660 + 110 = 1770 puntos en C5, puesto 16. Sale de C6. Categoría principal: C5. Ver sección 11.4. |
+| Imágenes de Google Sites | **Autorizado** su uso (20/11/2026). | Galerías del histórico 2025 y flyers (Fases 8 y 10). |
+| DNS de `padeltime.com.ar` | **Autorizado** el cambio (20/11/2026). | Se ejecuta recién en la **Fase 11**, cuando la web nueva esté completa y probada. Antes se hace el inventario de registros DNS actuales para no cortar nada. |
 
-- la autorización para usar las imágenes de Google Sites y, al final, para cambiar los DNS del dominio;
-- las dos consultas de la sección 11.4.
+No quedan decisiones pendientes para empezar la Fase 7.
 
 ## 11. Rankings 2026: análisis de las planillas recibidas
 
@@ -451,7 +453,23 @@ Con 241 filas están muy lejos del límite de unas 1000 filas por importación d
 - importar los **totales** como saldo inicial 2026, como se diseñó en la Fase 4 ("sin inventar historia");
 - **opcionalmente**, importar además el detalle por torneo, como un movimiento por columna con el nombre del torneo. Así el historial público de cada jugador muestra de dónde salen sus puntos. Requiere los nombres de las columnas de C5 y C6, y se haría en la Fase 10.
 
-### 11.4 Consultas
+### 11.4 Consultas resueltas y planillas listas para importar
 
-1. **¿Las planillas están completas?** C7 tiene exactamente 20 jugadores, C6 40 y C8 100: números redondos que podrían ser sólo los primeros puestos. Si hay más jugadores, conviene importar la planilla entera.
-2. **Agustín Barrera** figura en C6 (1660 puntos) y en C5 (110). ¿Cuál es su categoría principal? El sistema lo mantiene como un solo jugador con puntos en ambos rankings, pero la categoría principal define dónde suma de ahora en adelante.
+1. **Las planillas están completas** (confirmado por los organizadores).
+2. **Agustín Barrera:** sus puntos se suman y queda sólo en C5.
+   - En ambas planillas sus puntos están en la misma columna ("JUGADOS"): 1 + 5 = 6 partidos, 110 + 1660 = 1770 puntos. El desglose también cierra.
+   - En C5 pasa del puesto 65 al **16** (entre Matías Rochelle, 1810, y Juan Manuel Ciutat, 1670).
+   - En C6 se lo quita y se renumeran los puestos.
+   - Al importar, se lo crea (o vincula) con categoría principal **C5**.
+
+Planillas finales, preparadas fuera del repositorio:
+
+| Categoría | Jugadores | Puntos totales |
+|---|---:|---:|
+| C5 | 81 | 92.200 |
+| C6 | 39 | 144.170 |
+| C7 | 20 | 51.800 |
+| C8 | 100 | 69.625 |
+| **Total** | **240 jugadores** | **357.795** (igual al original: sólo se movieron 1660 puntos de C6 a C5) |
+
+Las cuatro se volvieron a pasar por el importador: 240 filas leídas, ninguna omitida, totales idénticos y la suma por torneo coincide en todas las filas.
