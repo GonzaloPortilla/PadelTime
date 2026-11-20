@@ -86,7 +86,7 @@ test("la página pública muestra el ranking importado y el historial del jugado
   const visitor = await page.context().browser()!.newContext({ locale: "es-AR" });
   const pub = await visitor.newPage();
   await pub.goto(plainUrl);
-  await expect(pub.getByRole("heading", { name: "Ranking 6ta Caballeros" })).toBeVisible();
+  await expect(pub.getByRole("heading", { name: "Ranking 6ta" })).toBeVisible();
   const rows = pub.locator("#ranking tbody tr");
   await expect(rows).toHaveCount(6);
   await expect(rows.first()).toContainText("Pérez, Juan");
@@ -148,7 +148,7 @@ test("impide importar dos veces el mismo archivo y permite revertir", async ({ p
 
   // La vista pública se actualiza sola.
   const pub = await page.context().browser()!.newPage();
-  await pub.goto(page.url().replace(/\/importar-rankings.*/, "/publico"));
+  await pub.goto(new URL("/publico", page.url()).href);
   await expect(pub.getByText("6ta Caballeros")).toHaveCount(0);
   await pub.close();
 });

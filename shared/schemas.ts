@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SERIES } from "./site";
 import {
   CATEGORY_CHANGE_TYPES,
   MOVEMENT_KINDS,
@@ -137,6 +138,13 @@ export const tournamentSchema = z
     endDate: optionalIsoDate,
     venue: optionalText(100),
     notes: optionalText(1000),
+    // Web pública (Fase 7). Por defecto un torneo NO se publica.
+    publicVisible: z.boolean().default(false),
+    featured: z.boolean().default(false),
+    registrationOpen: z.boolean().default(false),
+    series: z.union([z.enum(SERIES), z.literal("").transform(() => null), z.null()]).default(null),
+    publicDescription: optionalText(2000),
+    prizeInfo: optionalText(1000),
   })
   .transform((t) => ({ ...t, endDate: t.type === "americano" || !t.endDate ? t.startDate : t.endDate }))
   .refine((t) => t.endDate >= t.startDate, { message: "La fecha de fin debe ser posterior al inicio", path: ["endDate"] });

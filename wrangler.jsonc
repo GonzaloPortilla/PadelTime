@@ -3,12 +3,17 @@
   "name": "padel-time",
   "main": "worker/index.ts",
   "compatibility_date": "2026-11-01",
-  // La SPA se sirve como assets estáticos (gratis e ilimitados en el plan Free).
-  // Sólo /api/* y la vista pública /publico/* ejecutan el Worker (cuentan para las 100.000 requests/día).
   "assets": {
+    // Binding para que el Worker sirva el panel (/admin) y archivos de la raíz.
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/publico", "/publico/*"]
+    // El Worker atiende la web pública, la API y el panel. Los archivos estáticos se sirven directo
+    // (gratis e ilimitados): no consumen las 100.000 requests/día del plan Free.
+    "run_worker_first": ["/*", "!/assets/*", "!/pub/*", "!/brand/*", "!/web/*", "!/ocr/*", "!/manifest.webmanifest", "!/favicon.svg",
+      // Rutas internas del servidor de desarrollo de Vite (no existen en producción).
+      "!/@vite/*", "!/@react-refresh", "!/@id/*", "!/@fs/*", "!/src/*", "!/node_modules/*", "!/shared/*"]
   },
+
   "d1_databases": [
     {
       "binding": "DB",

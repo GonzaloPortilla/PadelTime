@@ -4,7 +4,6 @@
   X-Frame-Options: DENY
   Referrer-Policy: same-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  X-Robots-Tag: noindex, nofollow
   Strict-Transport-Security: max-age=31536000
 
 /assets/*
@@ -12,3 +11,12 @@
 
 /ocr/*
   Cache-Control: public, max-age=604800
+
+/pub/*
+  Cache-Control: public, max-age=604800
+
+/web/*
+  Cache-Control: public, max-age=2592000
+
+/brand/*
+  Cache-Control: public, max-age=2592000

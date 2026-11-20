@@ -50,7 +50,7 @@ describe("páginas públicas de rankings", () => {
     const { res, html } = await page(`/publico/ranking/${s.season.id}/${s.cab4.id}`);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toMatch(/text\/html/);
-    expect(html).toContain("Ranking 4ta Caballeros");
+    expect(html).toContain("Ranking 4ta");
     expect(html).toContain("Salas, Nicolás");
     expect(html).toContain("Mosquera, Leo");
     // Campeones (100 pts, empatados) antes que los finalistas.
@@ -90,7 +90,7 @@ describe("páginas públicas de rankings", () => {
     const s = await scenario();
     const path = `/publico/ranking/actual/${s.cab4.id}`;
     const before = await page(path);
-    expect(before.html).toContain("Todavía no hay puntos");
+    expect(before.html).toContain("Sin puntos todavía");
     const etag1 = before.res.headers.get("etag")!;
     // Mientras no cambia nada, el navegador recibe 304.
     expect((await rawFetch(path, { headers: { "if-none-match": etag1 } })).status).toBe(304);

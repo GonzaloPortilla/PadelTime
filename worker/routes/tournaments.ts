@@ -35,12 +35,18 @@ interface Row {
   notes: string | null;
   team_count: number;
   credited_version: number | null;
+  public_visible: number;
+  featured: number;
+  registration_open: number;
+  series: Tournament["series"];
+  public_description: string | null;
+  prize_info: string | null;
 }
 
 export const TOURNAMENT_SELECT = `
   SELECT t.id, t.season_id, s.name AS season_name, s.status AS season_status, t.name, t.type, t.category_id,
          c.name AS category_name, c.gender, t.division_id, d.name AS division_name, t.start_date, t.end_date,
-         t.status, t.venue, t.notes,
+         t.status, t.venue, t.notes, t.public_visible, t.featured, t.registration_open, t.series, t.public_description, t.prize_info,
          (SELECT COUNT(*) FROM tournament_teams tt WHERE tt.tournament_id = t.id) AS team_count,
          (SELECT cr.version FROM tournament_credits cr WHERE cr.tournament_id = t.id AND cr.status = 'vigente') AS credited_version
     FROM tournaments t
@@ -67,6 +73,12 @@ export const mapTournament = (r: Row): Tournament => ({
   notes: r.notes,
   teamCount: r.team_count,
   creditedVersion: r.credited_version,
+  publicVisible: r.public_visible === 1,
+  featured: r.featured === 1,
+  registrationOpen: r.registration_open === 1,
+  series: r.series,
+  publicDescription: r.public_description,
+  prizeInfo: r.prize_info,
 });
 
 async function getTournament(db: D1Database, id: number): Promise<Tournament> {
@@ -152,11 +164,13 @@ tournamentRoutes.post("/", async (c) => {
   const [res] = await db.batch<{ id: number }>([
     db
       .prepare(
-        `INSERT INTO tournaments (season_id, name, type, category_id, division_id, start_date, end_date, venue, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+        `INSERT INTO tournaments (season_id, name, type, category_id, division_id, start_date, end_date, venue, notes, created_by,
+                                  public_visible, featured, registration_open, series, public_description, prize_info)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       )
       .bind(input.seasonId, input.name, input.type, input.categoryId, input.divisionId, input.startDate, input.endDate,
-        input.venue, input.notes, c.get("user").id),
+        input.venue, input.notes, c.get("user").id, input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0,
+        input.series, input.publicDescription, input.prizeInfo),
     // Se copia la plantilla predeterminada del tipo de torneo (queda editable para este torneo).
     db
       .prepare(
@@ -194,10 +208,12 @@ tournamentRoutes.put("/:id", async (c) => {
     db
       .prepare(
         `UPDATE tournaments SET season_id = ?, name = ?, type = ?, category_id = ?, division_id = ?, start_date = ?, end_date = ?,
-                venue = ?, notes = ?, updated_at = ? WHERE id = ?`,
+                venue = ?, notes = ?, public_visible = ?, featured = ?, registration_open = ?, series = ?, public_description = ?,
+                prize_info = ?, updated_at = ? WHERE id = ?`,
       )
       .bind(input.seasonId, input.name, input.type, input.categoryId, input.divisionId, input.startDate, input.endDate,
-        input.venue, input.notes, new Date().toISOString(), id),
+        input.venue, input.notes, input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0, input.series,
+        input.publicDescription, input.prizeInfo, new Date().toISOString(), id),
     auditStmt(db, c.get("user").id, "editar", "torneo", id, `Editó el torneo ${input.name}`),
   ]);
   return c.json({ item: await getTournament(db, id) });

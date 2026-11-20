@@ -10,7 +10,7 @@ Desde **Publicación web** en la app se copian los enlaces. Tienen esta forma (c
 
 | Página | Dirección |
 |---|---|
-| Índice de rankings | `/publico` |
+| Índice de rankings | `/rankings` (antes `/publico`, que sigue funcionando) |
 | Ranking de una categoría | `/publico/ranking/<temporada>/<categoría>` |
 | Ranking de una división | `/publico/ranking/<temporada>/<categoría>/<división>` |
 | Ranking de la temporada vigente | `/publico/ranking/actual/<categoría>` (pasa sola a la próxima temporada cuando la activás) |

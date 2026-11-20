@@ -190,6 +190,33 @@ Excel/CSV ─► lectura en el navegador (src/rankingImport/parse) ─► mapeo 
 - **Tamaño de solicitudes:** 64 KB en general; 2 MB para la importación de rankings (`IMPORT_MAX_BODY_BYTES`).
 - **Carga diferida:** las pantallas pesadas (torneo con OCR, importación, publicación, respaldo, rankings, plantillas, movimientos, usuarios) son chunks separados (`React.lazy`).
 
+## 2 sexies. Web pública oficial (Fase 7)
+
+Detalle en [`docs/WEB_PUBLICA.md`](WEB_PUBLICA.md). Resumen técnico:
+
+- **Rutas** (`worker/index.ts`):
+  - `/api` → API;
+  - `/admin/*` → SPA del panel (`env.ASSETS`, React Router con `basename="/admin"`, CSP estricta y `noindex` por cabecera);
+  - direcciones viejas del panel → 301 a `/admin`;
+  - resto → `worker/public/app.ts`.
+
+  `run_worker_first` excluye los estáticos (`/assets`, `/pub`, `/brand`, `/web`, `/ocr`).
+- **Render:**
+  - `worker/public/layout.ts`: cabecera, menú (PC y celular sin JS), pie y metadatos;
+  - `site-pages.ts`: páginas y renderizador de bloques;
+  - `site-data.ts`: consultas sólo publicables;
+  - `pages.ts`: rankings existentes, con enlaces según el prefijo `/rankings` o `/publico`.
+
+  El CSS es estático (`public/pub/site.css`).
+- **Migración 0005:**
+  - tablas `site_pages`, `site_posts` y `site_events`;
+  - columnas públicas de `tournaments` (`public_visible` = 0 por defecto, `series`, `featured`, `registration_open`, `public_description`, `prize_info`);
+  - ajustes `site_*` en `app_settings`;
+  - triggers de `public_version`.
+- **Modelos compartidos** (`shared/site.ts`): bloques (Zod), modalidades, ajustes, `tournamentPath` y `whatsappUrl`.
+- **API nueva:** `GET /api/site` (con sesión) y `PUT /api/site` (admin). `tournamentSchema` acepta los campos públicos con valores por defecto.
+- **Ramas activas:** `site_active_genders`, que filtran la web y las altas del panel. No se modifica ningún dato.
+
 ## 3. API
 
 Todas las respuestas son JSON. Los errores tienen la forma `{ error: { code, message, fields? } }`, con los mensajes en español.

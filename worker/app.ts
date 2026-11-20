@@ -18,6 +18,7 @@ import { directoryRoutes, importRoutes } from "./routes/imports";
 import { rankingImportRoutes } from "./routes/rankingImports";
 import { publicationRoutes } from "./routes/publication";
 import { backupRoutes } from "./routes/backup";
+import { siteRoutes } from "./routes/site";
 
 export const app = new Hono<AppEnv>().basePath("/api");
 
@@ -81,3 +82,4 @@ app.route("/dashboard", dashboardRoutes);
 app.route("/ranking-imports", rankingImportRoutes);
 app.route("/publication", publicationRoutes);
 app.route("/backup", backupRoutes);
+app.route("/site", siteRoutes);

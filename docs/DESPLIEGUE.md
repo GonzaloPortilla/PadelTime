@@ -87,7 +87,7 @@ npm run user:create -- --username admin --name "Nombre Apellido" --remote
 
 Pide la contraseña sin mostrarla (mínimo 10 caracteres). Después:
 
-1. Ingresá a la app con ese usuario.
+1. Ingresá al panel en `https://padel-time.<subdominio>.workers.dev/admin` con ese usuario. La raíz (`/`) es la web pública.
 2. Desde **Usuarios**, creá las cuentas del resto de los organizadores (rol *organizador*, o *admin* para quien también vaya a gestionar usuarios, respaldos y la publicación web).
 
 ## 7. Verificación después de publicar
@@ -97,7 +97,8 @@ Pide la contraseña sin mostrarla (mínimo 10 caracteres). Después:
 | La API responde | Abrí `https://padel-time.<subdominio>.workers.dev/api/health`: debe mostrar `{"ok":true}`. |
 | Ingreso | Entrá con el administrador. Probá una contraseña incorrecta: debe rechazarla. |
 | Datos iniciales | Creá categorías (por ejemplo 4ta Caballeros) y una temporada, y activala. |
-| Rankings públicos | Abrí `/publico`. Con la base vacía muestra que todavía no hay rankings. |
+| Web pública | Abrí `/`, `/torneos`, `/rankings` y `/reglamentos` sin iniciar sesión. Con la base vacía, torneos y rankings muestran estados vacíos. `/publico` sigue funcionando para los iframes de Google Sites. |
+| Panel protegido | Abrí `/admin` en una ventana privada: tiene que pedir usuario y contraseña. |
 | Celular | Abrí la app en el teléfono, ingresá y recorré el menú. |
 | Respaldo | Desde **Respaldo**, descargá el primer respaldo y guardalo. |
 

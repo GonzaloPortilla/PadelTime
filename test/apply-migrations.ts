@@ -47,6 +47,8 @@ beforeEach(async () => {
     ...restoreStmt("app_settings", settings.results as Record<string, unknown>[]),
     // La vista pública guarda páginas en memoria según la versión: cada test arranca con una versión nueva
     // (en producción la versión sólo crece, así que nunca se repite).
-    env.DB.prepare("UPDATE app_settings SET value = ? WHERE key = 'public_version'").bind(String(++versionSeed)),
+    // Saltos amplios: cada test arranca con una versión pública que ningún test anterior pudo alcanzar
+    // (los triggers la incrementan varias veces por test), así nunca se reutiliza una página en caché ajena.
+    env.DB.prepare("UPDATE app_settings SET value = ? WHERE key = 'public_version'").bind(String((versionSeed += 1_000_000))),
   ]);
 });

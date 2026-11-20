@@ -6,7 +6,7 @@ import { CATEGORY_CHANGE_LABEL, GENDER_LABEL, type Gender } from "@shared/consta
 import type { DuplicateCandidate, Player } from "@shared/types";
 import { api, toQuery } from "@/lib/api";
 import { useForm } from "@/lib/useForm";
-import { keys, useCategories } from "@/hooks/data";
+import { keys, useActiveGenders, useCategories } from "@/hooks/data";
 import { Button } from "@/components/ui/Button";
 import { FormError, SelectField, TextAreaField, TextField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -20,12 +20,13 @@ interface Props {
   defaults?: { gender?: Gender; mainCategoryId?: number };
 }
 
-export function GenderToggle({ value, onChange, error }: { value: Gender | ""; onChange: (g: Gender) => void; error?: string }) {
+/** `options`: ramas habilitadas (en altas nuevas sólo las activas; Damas está discontinuada). */
+export function GenderToggle({ value, onChange, error, options = ["M", "F"] }: { value: Gender | ""; onChange: (g: Gender) => void; error?: string; options?: readonly Gender[] }) {
   return (
     <div>
       <span className="mb-1 block text-sm font-medium text-slate-700">Rama<span className="ml-0.5 text-red-500">*</span></span>
-      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Rama">
-        {(["M", "F"] as const).map((g) => (
+      <div className={cn("grid gap-2", options.length > 1 ? "grid-cols-2" : "grid-cols-1")} role="radiogroup" aria-label="Rama">
+        {options.map((g) => (
           <button
             key={g}
             type="button"
@@ -52,11 +53,14 @@ export function PlayerForm({ player, onClose, onSaved, defaults }: Props) {
   const qc = useQueryClient();
   const toast = useToast();
   const categories = useCategories();
+  const activeGenders = useActiveGenders();
+  // En altas nuevas sólo se ofrecen las ramas activas; un jugador existente conserva la suya.
+  const genderOptions: Gender[] = player ? (["M", "F"] as Gender[]) : activeGenders;
   const form = useForm({
     firstName: player?.firstName ?? "",
     lastName: player?.lastName ?? "",
     nickname: player?.nickname ?? "",
-    gender: (player?.gender ?? defaults?.gender ?? "") as Gender | "",
+    gender: (player?.gender ?? defaults?.gender ?? (activeGenders.length === 1 ? activeGenders[0] : "")) as Gender | "",
     mainCategoryId: String(player?.mainCategoryId ?? defaults?.mainCategoryId ?? ""),
     documentNumber: player?.documentNumber ?? "",
     phone: player?.phone ?? "",
@@ -162,6 +166,7 @@ export function PlayerForm({ player, onClose, onSaved, defaults }: Props) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <GenderToggle
+            options={genderOptions}
             value={v.gender}
             error={form.errors.gender}
             onChange={(g) => {

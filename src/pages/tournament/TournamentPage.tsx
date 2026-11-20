@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge, Card, CardHeader, ErrorState, Spinner } from "@/components/ui/misc";
 import { GenderBadge, TournamentStatusBadge, TournamentTypeBadge } from "@/components/ui/badges";
 import { TournamentForm } from "@/components/forms/TournamentForm";
+import { tournamentPath } from "@shared/site";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
 import { TeamsTab } from "./TeamsTab";
@@ -81,7 +82,7 @@ function Summary({ t, onTab }: { t: Tournament; onTab: (k: TabKey) => void }) {
         <Card>
           <CardHeader title="Estado" />
           <div className="space-y-3 p-4 sm:p-5">
-            <div className="flex flex-wrap gap-2"><TournamentStatusBadge status={t.status} />{credited && <Badge tone="green"><ShieldCheck className="size-3" />Acreditado v{t.creditedVersion}</Badge>}</div>
+            <div className="flex flex-wrap gap-2"><TournamentStatusBadge status={t.status} />{credited && <Badge tone="green"><ShieldCheck className="size-3" />Acreditado v{t.creditedVersion}</Badge>}{t.publicVisible ? <a href={tournamentPath(t)} target="_blank" rel="noopener"><Badge tone="blue">En la web ↗</Badge></a> : <Badge tone="gray">No publicado en la web</Badge>}</div>
             {locked ? (
               <p className="text-sm text-slate-500">La temporada {t.seasonName} está cerrada: el torneo es de sólo lectura.</p>
             ) : credited ? (

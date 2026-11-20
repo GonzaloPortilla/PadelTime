@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox, FilterSelect, FormError, TextField } from "@/components/ui/Field";
 import { Badge, Card, CardHeader, EmptyState, ErrorState, PageHeader, Spinner } from "@/components/ui/misc";
 import { useToast } from "@/components/ui/Toast";
+import { SiteSettingsCard } from "./publication/SiteSettingsCard";
 
 const pubKey = ["publication"] as const;
 
@@ -93,7 +94,7 @@ export function PublicationPage() {
       <PageHeader
         title="Publicación web"
         description="Páginas públicas de sólo lectura, una por ranking, para colocar una sola vez en Google Sites. Se actualizan solas cada vez que se acreditan o revierten puntos."
-        actions={<a href="/publico" target="_blank" rel="noopener" className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"><Globe className="size-4" /> Ver sitio público</a>}
+        actions={<a href="/" target="_blank" rel="noopener" className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"><Globe className="size-4" /> Ver la web</a>}
       />
       {q.isPending ? <Spinner /> : q.isError ? <ErrorState message={q.error.message} onRetry={() => void q.refetch()} /> : (
         <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
@@ -162,6 +163,7 @@ export function PublicationPage() {
             </Card>
           </div>
           <div className="space-y-4">
+            <SiteSettingsCard />
             <SettingsCard data={q.data} />
             <Card className="p-4 text-sm text-slate-600 sm:p-5">
               <h2 className="text-sm font-semibold text-slate-900">Cómo agregarlo en Google Sites</h2>

@@ -32,7 +32,10 @@ export function resolveSeason(seasons: PublicSeason[], param: string): PublicSea
 }
 
 /** Rankings con puntos de una temporada: por categoría y, si hay, por división. */
-export async function rankingRefs(db: D1Database, seasonId: number): Promise<PublicRankingRef[]> {
+/** Ramas visibles en la web (Damas está discontinuada: sus datos se conservan, pero no se publican). */
+export const ALL_GENDERS: Gender[] = ["M", "F"];
+
+export async function rankingRefs(db: D1Database, seasonId: number, genders: Gender[] = ALL_GENDERS): Promise<PublicRankingRef[]> {
   const { results } = await db
     .prepare(
       `SELECT x.category_id, c.name AS category_name, c.gender, c.level, x.division_id, d.name AS division_name, x.players
@@ -49,7 +52,7 @@ export async function rankingRefs(db: D1Database, seasonId: number): Promise<Pub
     )
     .bind(seasonId, seasonId)
     .all<{ category_id: number; category_name: string; gender: Gender; level: number; division_id: number | null; division_name: string | null; players: number }>();
-  return results.map((r) => ({
+  return results.filter((r) => genders.includes(r.gender)).map((r) => ({
     seasonId, categoryId: r.category_id, categoryName: r.category_name, gender: r.gender, level: r.level,
     divisionId: r.division_id, divisionName: r.division_name, players: r.players,
   }));
@@ -63,7 +66,7 @@ export interface PublicRanking {
   lastUpdate: string | null;
 }
 
-export async function loadRanking(db: D1Database, season: PublicSeason, categoryId: number, divisionId: number | null): Promise<PublicRanking | null> {
+export async function loadRanking(db: D1Database, season: PublicSeason, categoryId: number, divisionId: number | null, genders: Gender[] = ALL_GENDERS): Promise<PublicRanking | null> {
   const [catRes, divRes, lastRes] = await db.batch([
     db.prepare("SELECT id, name, gender FROM categories WHERE id = ?").bind(categoryId),
     db.prepare("SELECT id, name FROM divisions WHERE id = ? AND category_id = ?").bind(divisionId ?? 0, categoryId),
@@ -72,7 +75,7 @@ export async function loadRanking(db: D1Database, season: PublicSeason, category
     ).bind(...(divisionId !== null ? [season.id, categoryId, divisionId] : [season.id, categoryId])),
   ]);
   const category = catRes!.results[0] as { id: number; name: string; gender: Gender } | undefined;
-  if (!category) return null;
+  if (!category || !genders.includes(category.gender)) return null;
   const division = (divRes!.results[0] as { id: number; name: string } | undefined) ?? null;
   if (divisionId !== null && !division) return null;
   const rankings = await computeRankings(db, season.id, categoryId, divisionId, season.tiebreakers);
@@ -89,7 +92,7 @@ export interface PublicPlayerHit { code: string; firstName: string; lastName: st
  * Búsqueda pública: sólo por nombre, apellido o apodo (se descartan términos con dígitos para que
  * no se pueda consultar un documento) y sólo jugadores con puntos en temporadas visibles.
  */
-export async function searchPlayers(db: D1Database, query: string): Promise<PublicPlayerHit[]> {
+export async function searchPlayers(db: D1Database, query: string, genders: Gender[] = ALL_GENDERS): Promise<PublicPlayerHit[]> {
   const terms = searchTerms(query).filter((t) => !/\d/.test(t) && t.length >= 2).slice(0, 5);
   if (!terms.length) return [];
   const likes = terms.map(() => "p.search_text LIKE ? ESCAPE '\\'").join(" AND ");
@@ -103,7 +106,7 @@ export async function searchPlayers(db: D1Database, query: string): Promise<Publ
     )
     .bind(...terms.map((t) => `%${t.replace(/[\\%_]/g, (m) => `\\${m}`)}%`))
     .all<{ code: string; first_name: string; last_name: string; nickname: string | null; category_name: string; gender: Gender }>();
-  return results.map((r) => ({ code: r.code, firstName: r.first_name, lastName: r.last_name, nickname: r.nickname, categoryName: r.category_name, gender: r.gender }));
+  return results.filter((r) => genders.includes(r.gender)).map((r) => ({ code: r.code, firstName: r.first_name, lastName: r.last_name, nickname: r.nickname, categoryName: r.category_name, gender: r.gender }));
 }
 
 export interface PublicHistoryEntry {
@@ -117,7 +120,7 @@ export interface PublicPlayer {
   history: PublicHistoryEntry[];
 }
 
-export async function loadPlayer(db: D1Database, code: string, seasons: PublicSeason[]): Promise<PublicPlayer | null> {
+export async function loadPlayer(db: D1Database, code: string, seasons: PublicSeason[], genders: Gender[] = ALL_GENDERS): Promise<PublicPlayer | null> {
   const p = await db
     .prepare(
       `SELECT p.id, p.code, p.first_name, p.last_name, p.nickname, p.gender, c.name AS category_name
@@ -125,7 +128,7 @@ export async function loadPlayer(db: D1Database, code: string, seasons: PublicSe
     )
     .bind(code.toUpperCase())
     .first<{ id: number; code: string; first_name: string; last_name: string; nickname: string | null; gender: Gender; category_name: string }>();
-  if (!p) return null;
+  if (!p || !genders.includes(p.gender)) return null;
   const { results } = await db
     .prepare(
       `SELECT m.kind, m.points, m.season_id, s.name AS season_name, m.category_id, c.name AS category_name, d.name AS division_name,

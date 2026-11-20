@@ -8,7 +8,7 @@ import type { Category, Division } from "@shared/types";
 import { api } from "@/lib/api";
 import { useForm } from "@/lib/useForm";
 import { plural } from "@/lib/format";
-import { keys, useCategories } from "@/hooks/data";
+import { keys, useActiveGenders, useCategories } from "@/hooks/data";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Checkbox, FormError, TextAreaField, TextField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -28,6 +28,7 @@ function useInvalidate() {
 
 function CategoryForm({ category, gender, onClose }: { category: Category | null; gender: Gender; onClose: () => void }) {
   const invalidate = useInvalidate();
+  const activeGenders = useActiveGenders();
   const toast = useToast();
   const form = useForm({
     name: category?.name ?? "",
@@ -64,7 +65,7 @@ function CategoryForm({ category, gender, onClose }: { category: Category | null
     >
       <form id="category-form" onSubmit={onSubmit} className="space-y-4" noValidate>
         <FormError message={form.formError} />
-        <GenderToggle value={form.values.gender} onChange={(g) => form.set("gender", g)} error={form.errors.gender} />
+        <GenderToggle options={category ? ["M", "F"] : activeGenders} value={form.values.gender} onChange={(g) => form.set("gender", g)} error={form.errors.gender} />
         <div className="grid grid-cols-3 gap-4">
           <TextField label="Nombre" required containerClassName="col-span-2" placeholder="Ej.: 4ta" value={form.values.name}
             onChange={(e) => form.set("name", e.target.value)} error={form.errors.name} />
@@ -209,6 +210,7 @@ function CategoryCard({ c, onEdit, onDivision, onToggle, onDelete }: {
 
 export function CategoriesPage() {
   const categories = useCategories();
+  const activeGenders = useActiveGenders();
   const invalidate = useInvalidate();
   const toast = useToast();
   const [editing, setEditing] = useState<{ category: Category | null; gender: Gender } | null>(null);
@@ -232,12 +234,15 @@ export function CategoriesPage() {
     <>
       <PageHeader
         title="Categorías y divisiones"
-        description="Categorías independientes para caballeros y damas. Cada una puede tener divisiones opcionales."
+        description="Categorías por rama, ordenadas por nivel. Cada una puede tener divisiones opcionales."
       />
       {categories.isPending ? <Spinner /> : categories.isError ? <ErrorState message={categories.error.message} onRetry={() => void categories.refetch()} /> : (
         <div className="grid gap-6 lg:grid-cols-2">
           {(["M", "F"] as const).map((g) => {
             const list = categories.data.filter((c) => c.gender === g);
+            const discontinued = !activeGenders.includes(g);
+            // Rama discontinuada (Damas): se conservan y editan sus categorías históricas, pero no se crean nuevas.
+            if (discontinued && list.length === 0) return null;
             return (
               <Card key={g}>
                 <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
@@ -245,10 +250,13 @@ export function CategoriesPage() {
                     <span className={cn("size-2.5 rounded-full", g === "M" ? "bg-sky-500" : "bg-pink-500")} />
                     <h2 className="font-semibold text-slate-900">{GENDER_LABEL[g]}</h2>
                     <span className="text-sm text-slate-400">{list.length}</span>
+                    {discontinued && <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Discontinuada · histórico</span>}
                   </div>
-                  <Button size="sm" variant="subtle" icon={<Plus className="size-4" />} onClick={() => setEditing({ category: null, gender: g })}>
-                    Categoría
-                  </Button>
+                  {!discontinued && (
+                    <Button size="sm" variant="subtle" icon={<Plus className="size-4" />} onClick={() => setEditing({ category: null, gender: g })}>
+                      Categoría
+                    </Button>
+                  )}
                 </div>
                 {list.length === 0 ? (
                   <EmptyState icon={g === "M" ? <Shapes className="size-6" /> : <Layers className="size-6" />} title={`Sin categorías de ${GENDER_LABEL[g].toLowerCase()}`}

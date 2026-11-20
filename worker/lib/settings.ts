@@ -1,7 +1,9 @@
 import type { PublicationSettings } from "@shared/types";
+import { siteSettingsFrom, type SiteSettings } from "@shared/site";
 
 export interface PublicSettings extends PublicationSettings {
   version: number;
+  site: SiteSettings;
 }
 
 /** Lee la configuración de publicación (una sola consulta, unas pocas filas). */
@@ -17,6 +19,7 @@ export async function loadPublicSettings(db: D1Database): Promise<PublicSettings
     title: map.get("public_title") || "Padel Time",
     hiddenSeasonIds: (hiddenRes!.results as { id: number }[]).map((r) => r.id),
     version: Number(map.get("public_version") ?? 1),
+    site: siteSettingsFrom(map),
   };
 }
 

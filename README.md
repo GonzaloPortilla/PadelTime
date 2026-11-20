@@ -4,10 +4,11 @@ Aplicación web para gestionar los torneos y rankings de Padel Time: jugadores, 
 
 **Costo operativo mensual: USD 0.** Corre íntegramente en el plan gratuito de Cloudflare (Workers + D1 + Static Assets), sin servicios pagos.
 
-> Estado: **Fase 5B (revisión integral y preparación para producción)**. Lista para publicar; todavía **no está publicada**.
+> Estado: **Fase 7 (nueva web pública oficial)**. La web pública está en la raíz (`/`) y el panel de organizadores en **`/admin`**. Todavía **no está publicada**.
 >
 > | Documento | Para quién |
 > |---|---|
+> | [`docs/WEB_PUBLICA.md`](docs/WEB_PUBLICA.md) | **Fase 7:** rutas, contenidos y SEO de la web pública, cambios en el panel |
 > | [`docs/WEB_OFICIAL.md`](docs/WEB_OFICIAL.md) | **Fase 6:** auditoría, arquitectura propuesta y plan de las Fases 7–11 para la web oficial (inventario de la web anterior en `docs/web-anterior/`) |
 > | [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Puesta en producción paso a paso (configuración, variables, migraciones, verificación) |
 > | [`docs/RESPALDO.md`](docs/RESPALDO.md) | Respaldo y recuperación ante fallos |

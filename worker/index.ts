@@ -2,12 +2,62 @@ import { app } from "./app";
 import { publicApp } from "./public/app";
 import { cleanupExpired } from "./lib/maintenance";
 
+/**
+ * Reparto de rutas (Fase 7):
+ *   /api/*     → API administrativa (con sesión)
+ *   /admin/*   → panel de organizadores (SPA, sin indexar)
+ *   resto      → web pública oficial (sin sesión). /publico/* se conserva por compatibilidad.
+ * Los archivos estáticos (/assets, /pub, /brand, /web, /ocr) los sirve Cloudflare directamente
+ * sin ejecutar el Worker (ver run_worker_first en wrangler.jsonc).
+ */
+
+/** Direcciones del panel anteriores a la Fase 7 → su equivalente bajo /admin (marcadores guardados). */
+const LEGACY_ADMIN = /^\/(ingresar|jugadores|importar-rankings|publicacion|puntuacion|movimientos|temporadas|categorias|usuarios|respaldo|cuenta)(\/.*)?$/;
+
+export function legacyAdminPath(pathname: string): string | null {
+  if (LEGACY_ADMIN.test(pathname)) return `/admin${pathname}`;
+  // /torneos/12 (id numérico) era la ficha del torneo en el panel; la web usa /torneos/<nombre>-<id>.
+  if (/^\/torneos\/\d+$/.test(pathname)) return `/admin${pathname}`;
+  return null;
+}
+
+/** Cabeceras del panel: CSP estricta, sin incrustar y sin indexar. */
+const ADMIN_HEADERS: Record<string, string> = {
+  "Content-Security-Policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "same-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "X-Robots-Tag": "noindex, nofollow",
+  "Cache-Control": "no-cache",
+};
+
+/** En `npm run dev`, Vite inyecta un script en línea (recarga en caliente): la CSP estricta se aplica sólo al build. */
+const IS_DEV = Boolean((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV);
+
+async function serveAdmin(request: Request, env: Env): Promise<Response> {
+  // La SPA es un único index.html: cualquier ruta /admin/... lo recibe y React Router resuelve la pantalla.
+  const res = await env.ASSETS.fetch(new Request(new URL("/", request.url), { headers: request.headers }));
+  const out = new Response(res.body, res);
+  for (const [k, v] of Object.entries(ADMIN_HEADERS)) if (!(IS_DEV && k === "Content-Security-Policy")) out.headers.set(k, v);
+  if (new URL(request.url).protocol === "https:") out.headers.set("Strict-Transport-Security", "max-age=31536000");
+  return out;
+}
+
 export default {
-  fetch(request, env, ctx) {
-    const { pathname } = new URL(request.url);
-    // Vista pública de sólo lectura (sin sesión ni acceso a la API administrativa).
-    if (pathname === "/publico" || pathname.startsWith("/publico/")) return publicApp.fetch(request, env, ctx);
-    return app.fetch(request, env, ctx);
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const { pathname } = url;
+    if (pathname === "/api" || pathname.startsWith("/api/")) return app.fetch(request, env, ctx);
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) return serveAdmin(request, env);
+    const legacy = legacyAdminPath(pathname);
+    if (legacy) return Response.redirect(`${url.origin}${legacy}${url.search}`, 301);
+    // Archivos de la raíz que no son páginas (manifest, íconos…): los sirve Cloudflare.
+    if (/\.[a-z0-9]{2,5}$/i.test(pathname) && pathname !== "/robots.txt" && pathname !== "/sitemap.xml") {
+      const asset = await env.ASSETS.fetch(request);
+      if (asset.status !== 404) return asset;
+    }
+    return publicApp.fetch(request, env, ctx);
   },
   // Tarea diaria (Cron Trigger, incluido en el plan gratuito): limpia datos temporales.
   scheduled(_controller, env, ctx) {

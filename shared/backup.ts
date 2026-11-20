@@ -28,12 +28,15 @@ export const BACKUP_TABLES = [
   "initial_balances",
   "bracket_imports",
   "audit_log",
+  "site_pages",
+  "site_posts",
+  "site_events",
   "app_settings",
 ] as const;
 export type BackupTable = (typeof BACKUP_TABLES)[number];
 
 /** Tablas que las migraciones siembran con datos iniciales: se vacían antes de restaurar. */
-const SEEDED_TABLES: BackupTable[] = ["scoring_template_stages", "scoring_templates", "app_settings"];
+const SEEDED_TABLES: BackupTable[] = ["scoring_template_stages", "scoring_templates", "site_pages", "app_settings"];
 
 export const BACKUP_PAGE_SIZE = 1000;
 

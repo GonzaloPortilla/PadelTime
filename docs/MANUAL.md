@@ -6,7 +6,8 @@ Guía práctica para usar Padel Time desde la compu o el celular. No hace falta 
 
 ## 1. Ingreso y cuentas
 
-- Entrá a la dirección de la app con tu **usuario y contraseña**. No existe el registro público: las cuentas las crea un administrador.
+- El panel está en **`/admin`** (por ejemplo, `https://padel-time.<subdominio>.workers.dev/admin`). La raíz de la dirección es la web pública, abierta a todos.
+- Entrá con tu **usuario y contraseña**. No existe el registro público: las cuentas las crea un administrador.
 - Tras 5 intentos fallidos, el ingreso se bloquea 15 minutos.
 - Tu contraseña la cambiás desde **Mi cuenta** (abajo en el menú). Al cambiarla se cierran tus sesiones en otros dispositivos.
 - Las sesiones duran 30 días sin uso. En una compu compartida, tocá **Salir** al terminar.
@@ -148,6 +149,30 @@ Detalles:
 - **Publicación web** (administrador): activar las páginas públicas, el título y qué temporadas se muestran.
 - Cada ranking tiene su **dirección pública** y su **código para incrustar** en Google Sites (*Insertar → Incorporar → Código*). Paso a paso en `docs/PUBLICACION.md`.
 - Las páginas públicas nunca muestran DNI, teléfonos, correos, notas ni los motivos de los ajustes.
+
+### Publicar un torneo en la web
+
+1. Abrí el torneo → **Editar datos** → sección **Web pública**.
+2. Marcá **Publicar en la web** y elegí la **Modalidad** (Open 1000, Challenger 500, Satélite 100, Master Final 2000).
+3. Opcional:
+   - **Destacado**: se resalta en la portada;
+   - **Inscripción abierta**: muestra el botón *Inscribirme*, que abre WhatsApp con el mensaje armado;
+   - **Información para la web**: horarios, formato, costo;
+   - **Premios**.
+4. Guardá. La ficha muestra **En la web ↗** con el enlace a la página pública.
+
+Las **Notas internas** nunca se publican. Mientras un torneo no está publicado, no aparece en la web.
+
+### Datos de la web (administrador)
+
+En **Publicación web → Datos de la web** se editan:
+
+- la frase de presentación;
+- el número de WhatsApp y el mensaje inicial;
+- Instagram;
+- la sede, la dirección y las coordenadas del mapa;
+- el **aviso destacado**, la franja verde arriba de todas las páginas. Por ejemplo: "Próximo torneo Portugal P2 360 el 26 de diciembre". Vacío no se muestra;
+- las **ramas activas**: Damas está desmarcada, así que no aparece en la web ni en las altas nuevas. Sus datos históricos se conservan.
 
 ---
 

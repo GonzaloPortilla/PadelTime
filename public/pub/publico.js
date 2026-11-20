@@ -25,3 +25,18 @@
   });
   apply();
 })();
+
+// Botón "Imprimir o guardar en PDF" (reglamentos) y filtros que se aplican al elegir una opción.
+(function () {
+  var printers = document.querySelectorAll("[data-print]");
+  for (var i = 0; i < printers.length; i++) {
+    printers[i].hidden = false;
+    printers[i].addEventListener("click", function () { window.print(); });
+  }
+  var selects = document.querySelectorAll("select[data-autosubmit]");
+  for (var j = 0; j < selects.length; j++) {
+    selects[j].addEventListener("change", function () { this.form && this.form.submit(); });
+  }
+  var submitBtn = document.querySelector("[data-autosubmit-btn]");
+  if (submitBtn && selects.length) submitBtn.hidden = true;
+})();

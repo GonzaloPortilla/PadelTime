@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { Category, ScoringTemplate, Season } from "@shared/types";
+import type { Gender } from "@shared/constants";
+import type { SiteSettings } from "@shared/site";
 import { api } from "@/lib/api";
 
 export const keys = {
@@ -14,7 +16,23 @@ export const keys = {
   rankings: ["rankings"] as const,
   movements: ["movements"] as const,
   tournament: (id: number | string) => ["tournaments", "detail", String(id)] as const,
+  site: ["site"] as const,
 };
+
+/** Datos de la web pública (WhatsApp, sede, aviso, ramas activas). */
+export function useSiteSettings() {
+  return useQuery({
+    queryKey: keys.site,
+    queryFn: async () => (await api.get<{ settings: SiteSettings }>("/site")).settings,
+    staleTime: 60_000,
+  });
+}
+
+/** Ramas habilitadas para nuevas altas. Damas está discontinuada: sus datos se conservan, pero no se crean nuevos. */
+export function useActiveGenders(): Gender[] {
+  const site = useSiteSettings();
+  return site.data?.activeGenders ?? ["M"];
+}
 
 export function useTemplates() {
   return useQuery({

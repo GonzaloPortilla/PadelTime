@@ -4,11 +4,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { tournamentSchema } from "@shared/schemas";
 import { GENDER_LABEL, TOURNAMENT_TYPE_LABEL, type TournamentType } from "@shared/constants";
 import type { Tournament } from "@shared/types";
+import { SERIES, SERIES_LABEL, tournamentPath, type Series } from "@shared/site";
 import { api } from "@/lib/api";
 import { useForm } from "@/lib/useForm";
-import { keys, useCategories, useSeasons } from "@/hooks/data";
+import { keys, useActiveGenders, useCategories, useSeasons } from "@/hooks/data";
 import { Button } from "@/components/ui/Button";
-import { FormError, SelectField, TextAreaField, TextField } from "@/components/ui/Field";
+import { Checkbox, FormError, SelectField, TextAreaField, TextField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -18,6 +19,7 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
   const toast = useToast();
   const seasons = useSeasons();
   const categories = useCategories();
+  const activeGenders = useActiveGenders();
   const openSeasons = (seasons.data ?? []).filter((s) => s.status !== "cerrada");
   const defaultSeason = openSeasons.find((s) => s.status === "activa") ?? openSeasons[0];
 
@@ -31,6 +33,12 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
     endDate: tournament?.endDate ?? "",
     venue: tournament?.venue ?? "",
     notes: tournament?.notes ?? "",
+    publicVisible: tournament?.publicVisible ?? false,
+    featured: tournament?.featured ?? false,
+    registrationOpen: tournament?.registrationOpen ?? false,
+    series: (tournament?.series ?? "") as Series | "",
+    publicDescription: tournament?.publicDescription ?? "",
+    prizeInfo: tournament?.prizeInfo ?? "",
   });
   const v = form.values;
   // Si las temporadas cargan después de abrir el formulario, se preselecciona la activa.
@@ -41,8 +49,9 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
 
   const season = openSeasons.find((s) => String(s.id) === v.seasonId);
   const selectableCategories = useMemo(
-    () => (categories.data ?? []).filter((c) => c.active || c.id === tournament?.categoryId),
-    [categories.data, tournament?.categoryId],
+    // Sólo categorías activas de ramas activas (Damas está discontinuada); al editar se conserva la del torneo.
+    () => (categories.data ?? []).filter((c) => (c.active && activeGenders.includes(c.gender)) || c.id === tournament?.categoryId),
+    [categories.data, tournament?.categoryId, activeGenders],
   );
   const category = selectableCategories.find((c) => String(c.id) === v.categoryId);
   const divisions = (category?.divisions ?? []).filter((d) => d.active || d.id === tournament?.divisionId);
@@ -153,7 +162,32 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
             )}
           </div>
           <TextField label="Sede" placeholder="Club o complejo" value={v.venue} onChange={(e) => form.set("venue", e.target.value)} error={form.errors.venue} />
-          <TextAreaField label="Notas" value={v.notes} onChange={(e) => form.set("notes", e.target.value)} error={form.errors.notes} />
+          <TextAreaField label="Notas internas" value={v.notes} onChange={(e) => form.set("notes", e.target.value)} error={form.errors.notes} hint="No se muestran en la web." />
+
+          <fieldset className="space-y-3 rounded-xl bg-slate-50 p-4 ring-1 ring-inset ring-slate-200">
+            <legend className="px-1 text-sm font-semibold text-slate-800">Web pública</legend>
+            <Checkbox label="Publicar en la web" checked={v.publicVisible} onChange={(c) => form.set("publicVisible", c)}
+              hint="El torneo aparece en Inicio, Torneos y Calendario. Sólo se publica información de la web: nunca notas internas ni datos personales." />
+            {tournament?.publicVisible && (
+              <a href={tournamentPath(tournament)} target="_blank" rel="noopener" className="ml-7 inline-block text-sm font-medium text-brand-700 hover:underline">Ver la página del torneo ↗</a>
+            )}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <SelectField label="Modalidad" value={v.series} onChange={(e) => form.set("series", e.target.value as Series | "")} error={form.errors.series}
+                hint="Según el reglamento. Se usa para filtrar en la web.">
+                <option value="">Sin especificar</option>
+                {SERIES.map((s) => <option key={s} value={s}>{SERIES_LABEL[s]}</option>)}
+              </SelectField>
+              <div className="space-y-3 pt-1">
+                <Checkbox label="Destacado" checked={v.featured} onChange={(c) => form.set("featured", c)} hint="Se resalta en la portada." />
+                <Checkbox label="Inscripción abierta" checked={v.registrationOpen} onChange={(c) => form.set("registrationOpen", c)}
+                  hint="Muestra el botón Inscribirme (abre WhatsApp)." />
+              </div>
+            </div>
+            <TextAreaField label="Información para la web" value={v.publicDescription} onChange={(e) => form.set("publicDescription", e.target.value)}
+              error={form.errors.publicDescription} hint="Opcional. Formato, horarios, costo de inscripción…" />
+            <TextAreaField label="Premios" value={v.prizeInfo} onChange={(e) => form.set("prizeInfo", e.target.value)} error={form.errors.prizeInfo}
+              hint="Opcional. Se muestran en la página del torneo y en Premios." />
+          </fieldset>
         </form>
       )}
     </Modal>

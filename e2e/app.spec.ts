@@ -37,7 +37,8 @@ test("alta de jugador homónimo, búsqueda sin acentos y cambio de categoría", 
   await expect(dialog.getByText("Ya hay 2 jugadores con este nombre")).toBeVisible();
   // Validación del lado del cliente.
   await dialog.getByRole("button", { name: "Crear jugador" }).click();
-  await expect(dialog.getByText("Elegí la rama")).toBeVisible();
+  // La rama viene elegida: Damas está discontinuada y sólo se ofrece Caballeros.
+  await expect(dialog.getByRole("radio", { name: "Caballeros" })).toHaveAttribute("aria-checked", "true");
   await dialog.getByRole("radio", { name: "Caballeros" }).click();
   await dialog.getByRole("combobox", { name: "Categoría principal" }).selectOption({ label: "5ta" });
   await dialog.getByLabel("Apodo").fill("El Mago");
@@ -73,22 +74,27 @@ test("alta de jugador homónimo, búsqueda sin acentos y cambio de categoría", 
 test("categorías y divisiones", async ({ page }) => {
   await login(page);
   await page.getByRole("link", { name: "Categorías" }).click();
-  const damas = page.locator("div.rounded-xl", { has: page.getByRole("heading", { name: "Damas" }) });
+  // Damas está discontinuada: se ve como histórico, sin alta de categorías nuevas.
+  const damasCard = page.locator("div.rounded-xl", { has: page.getByRole("heading", { name: "Damas" }) });
+  await expect(damasCard.getByText("Discontinuada · histórico")).toBeVisible();
+  await expect(damasCard.getByRole("button", { name: "Categoría" })).toHaveCount(0);
+  const damas = page.locator("div.rounded-xl", { has: page.getByRole("heading", { name: "Caballeros" }) });
   await damas.getByRole("button", { name: "Categoría" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Nombre").fill("3ra");
-  await dialog.getByLabel("Nivel").fill("3");
+  await expect(dialog.getByRole("radio", { name: "Damas" })).toHaveCount(0);
+  await dialog.getByLabel("Nombre").fill("2da");
+  await dialog.getByLabel("Nivel").fill("2");
   await dialog.getByRole("button", { name: "Guardar" }).click();
   await expect(page.getByText("Categoría creada")).toBeVisible();
   // Duplicada → error del servidor en el formulario.
   await damas.getByRole("button", { name: "Categoría" }).click();
-  await dialog.getByLabel("Nombre").fill("3RA");
-  await dialog.getByLabel("Nivel").fill("3");
+  await dialog.getByLabel("Nombre").fill("2DA");
+  await dialog.getByLabel("Nivel").fill("2");
   await dialog.getByRole("button", { name: "Guardar" }).click();
   await expect(dialog.getByRole("alert")).toContainText("Ya existe una categoría con ese nombre");
   await dialog.getByRole("button", { name: "Cancelar" }).click();
 
-  const item = damas.locator("li", { has: page.getByRole("heading", { name: "3ra" }) });
+  const item = damas.locator("li", { has: page.getByRole("heading", { name: "2da" }) });
   await item.getByRole("button", { name: "División" }).click();
   await page.getByRole("dialog").getByLabel("Nombre").fill("Oro");
   await page.getByRole("dialog").getByRole("button", { name: "Guardar" }).click();
@@ -149,7 +155,7 @@ test("un organizador no ve la gestión de usuarios; el admin sí", async ({ page
   await login(page, "marcos");
   await expect(page.getByRole("link", { name: "Usuarios" })).toHaveCount(0);
   await page.goto("/usuarios");
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/admin\/?$/);
   await page.getByRole("button", { name: "Salir" }).click();
   await expect(page).toHaveURL(/\/ingresar/);
   await login(page, "admin");

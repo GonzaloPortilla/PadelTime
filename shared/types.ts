@@ -130,6 +130,13 @@ export interface Tournament {
   teamCount: number;
   /** Versión de la acreditación vigente (null = sin acreditar). */
   creditedVersion: number | null;
+  /** Web pública (Fase 7). */
+  publicVisible: boolean;
+  featured: boolean;
+  registrationOpen: boolean;
+  series: import("./site").Series | null;
+  publicDescription: string | null;
+  prizeInfo: string | null;
 }
 
 export interface ActivityItem {

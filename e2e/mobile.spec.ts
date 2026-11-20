@@ -21,9 +21,11 @@ test("navegación y alta desde el celular", async ({ page }) => {
 
   await page.getByRole("button", { name: "Nuevo jugador" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("textbox", { name: "Nombre", exact: true }).fill("Ana");
+  await dialog.getByRole("textbox", { name: "Nombre", exact: true }).fill("Andrés");
   await dialog.getByRole("textbox", { name: "Apellido", exact: true }).fill("Celular");
-  await dialog.getByRole("radio", { name: "Damas" }).click();
+  // Damas está discontinuada: en un alta nueva sólo se ofrece Caballeros (ya elegida).
+  await expect(dialog.getByRole("radio", { name: "Damas" })).toHaveCount(0);
+  await expect(dialog.getByRole("radio", { name: "Caballeros" })).toHaveAttribute("aria-checked", "true");
   await dialog.getByRole("combobox", { name: "Categoría principal" }).selectOption({ label: "6ta" });
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/m4-form.png` });
   await dialog.getByRole("button", { name: "Crear jugador" }).click();
