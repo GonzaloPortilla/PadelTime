@@ -16,10 +16,10 @@ function TournamentRow({ t }: { t: Tournament }) {
   return (
     <li>
       <Link to={`/torneos/${t.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 sm:px-5">
-        <div className="flex w-14 shrink-0 flex-col items-center rounded-lg bg-slate-50 py-1.5 ring-1 ring-slate-200">
-          <span className="text-[10px] font-semibold uppercase text-slate-500">{dateParts(t.startDate).weekday}</span>
-          <span className="tabular text-lg font-bold leading-none text-slate-900">{dateParts(t.startDate).day}</span>
-          <span className="text-[10px] uppercase text-slate-500">{dateParts(t.startDate).month}</span>
+        <div className="flex w-14 shrink-0 flex-col items-center overflow-hidden rounded-lg bg-white ring-1 ring-brand-100">
+          <span className="w-full bg-brand-700 py-0.5 text-center text-[10px] font-semibold uppercase text-white">{dateParts(t.startDate).weekday}</span>
+          <span className="tabular pt-0.5 font-display text-xl font-semibold leading-tight text-navy">{dateParts(t.startDate).day}</span>
+          <span className="pb-1 text-[10px] uppercase text-slate-500">{dateParts(t.startDate).month}</span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-slate-900">{t.name}</p>
@@ -43,7 +43,7 @@ function CategoryBars({ data }: { data: DashboardData["playersByCategory"] }) {
         const rows = data.filter((d) => d.gender === g);
         return (
           <div key={g}>
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">{GENDER_LABEL[g]}</h3>
+            <h3 className="mb-3 font-brand text-xs font-bold uppercase tracking-wider text-slate-500">{GENDER_LABEL[g]}</h3>
             {rows.length === 0 ? (
               <p className="text-sm text-slate-400">Sin categorías activas.</p>
             ) : (
@@ -57,7 +57,7 @@ function CategoryBars({ data }: { data: DashboardData["playersByCategory"] }) {
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-slate-100" aria-hidden>
                         <div
-                          className={cn("h-full rounded-full", g === "M" ? "bg-sky-500" : "bg-pink-500")}
+                          className={cn("h-full rounded-full", g === "M" ? "bg-brand-600" : "bg-ball-400")}
                           style={{ width: `${(r.count / max) * 100}%` }}
                         />
                       </div>
@@ -85,14 +85,27 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm text-slate-500">{formatLongDate(d.today)}</p>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">¡Hola, {firstName}!</h1>
+      {/* Encabezado con las diagonales azul y verde del banner de la web oficial */}
+      <div className="relative overflow-hidden rounded-2xl bg-white px-5 py-6 shadow-sm ring-1 ring-slate-200/80 sm:px-8 sm:py-7">
+        <svg className="pointer-events-none absolute bottom-0 left-0 h-6 w-24 sm:h-10 sm:w-44" viewBox="0 0 256 80" preserveAspectRatio="none" aria-hidden>
+          <path d="M0 0 L256 80 L0 80Z" fill="#0f5a93" />
+        </svg>
+        <svg className="pointer-events-none absolute bottom-0 right-0 h-10 w-28 sm:h-24 sm:w-64" viewBox="0 0 288 112" preserveAspectRatio="none" aria-hidden>
+          <path d="M288 30 L0 112 L288 112Z" fill="#0f5a93" />
+          <path d="M288 0 L60 112 L288 112Z" fill="#57aa57" />
+        </svg>
+        <div className="relative flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-4">
+          <img src="/brand/padeltime-simbolo.png" alt="" width={64} height={64} className="hidden size-16 sm:block" />
+          <div>
+            <p className="font-brand text-xs font-bold uppercase tracking-wider text-ball-500">{formatLongDate(d.today)}</p>
+            <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-navy sm:text-3xl">¡Hola, {firstName}!</h1>
+          </div>
         </div>
         <div className="flex gap-2">
           <Link to="/jugadores?nuevo=1"><Button variant="secondary" icon={<Plus className="size-4" />}>Jugador</Button></Link>
           <Link to="/torneos?nuevo=1"><Button icon={<Plus className="size-4" />}>Torneo</Button></Link>
+        </div>
         </div>
       </div>
 
@@ -130,10 +143,10 @@ export function DashboardPage() {
         {s ? (
           <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-ink-950 p-2.5 text-ball-400"><CalendarRange className="size-5" /></div>
+              <div className="rounded-xl bg-brand-700 p-2.5 text-white"><CalendarRange className="size-5" /></div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-slate-900">{s.name}</h2>
+                  <h2 className="font-display text-lg font-semibold tracking-wide text-navy">{s.name}</h2>
                   <SeasonStatusBadge status={s.status} />
                 </div>
                 <p className="text-xs text-slate-500">{formatDate(s.startDate)} al {formatDate(s.endDate)} · {plural(s.tournamentCount, "torneo")}</p>

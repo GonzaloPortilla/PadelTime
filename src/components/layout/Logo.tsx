@@ -1,15 +1,20 @@
 import { cn } from "@/lib/cn";
 
-export function Logo({ className, dark = false }: { className?: string; dark?: boolean }) {
+/**
+ * Logotipo oficial de Padel Time (tomado de padeltime.com.ar).
+ *  - "horizontal": símbolo + nombre, como en la barra de la web oficial.
+ *  - "completo": el logotipo apilado original (símbolo y PADELTIME).
+ * `dark` se mantiene por compatibilidad: indica que el fondo es oscuro.
+ */
+export function Logo({ className, dark = false, variant = "horizontal" }: { className?: string; dark?: boolean; variant?: "horizontal" | "completo" }) {
+  if (variant === "completo") {
+    return <img src="/brand/padeltime-logo.png" alt="Padel Time" width={280} height={262} className={cn("h-auto w-56", className)} />;
+  }
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <svg viewBox="0 0 64 64" className="size-8 shrink-0" aria-hidden>
-        <rect width="64" height="64" rx="14" fill={dark ? "#0b1f1a" : "#17423a"} />
-        <circle cx="32" cy="32" r="17" fill="#c6f432" />
-        <path d="M19 22c8 4 8 16 0 20M45 22c-8 4-8 16 0 20" stroke="#0b1f1a" strokeWidth="3" fill="none" strokeLinecap="round" />
-      </svg>
-      <span className={cn("text-lg font-bold tracking-tight", dark ? "text-ink-950" : "text-white")}>
-        Padel <span className={dark ? "text-brand-700" : "text-ball-400"}>Time</span>
+      <img src="/brand/padeltime-simbolo.png" alt="" width={40} height={40} className="size-10 shrink-0" />
+      <span className={cn("font-brand text-lg font-bold tracking-tight", dark ? "text-white" : "text-brand-700")}>
+        PADEL <span className="text-ball-400">TIME</span>
       </span>
     </div>
   );

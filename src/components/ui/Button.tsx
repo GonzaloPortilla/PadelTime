@@ -6,11 +6,11 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
 type Size = "sm" | "md";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand-700 text-white hover:bg-brand-800 shadow-sm disabled:bg-brand-700/60",
-  secondary: "bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50 shadow-sm",
-  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+  primary: "bg-brand-700 text-white hover:bg-brand-800 shadow-sm shadow-brand-900/20 disabled:bg-brand-700/60",
+  secondary: "bg-white text-brand-800 ring-1 ring-inset ring-slate-300 hover:bg-brand-50 hover:ring-brand-300 shadow-sm",
+  ghost: "text-slate-600 hover:bg-brand-50 hover:text-brand-800",
   danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm disabled:bg-red-600/60",
-  subtle: "bg-brand-50 text-brand-800 hover:bg-brand-100",
+  subtle: "bg-ball-50 text-ball-700 ring-1 ring-inset ring-ball-500/25 hover:bg-ball-100",
 };
 const sizes: Record<Size, string> = {
   sm: "h-8 px-3 text-sm gap-1.5",
@@ -34,7 +34,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(function Button(
       type={type}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-lg font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+        "inline-flex shrink-0 items-center justify-center rounded-lg font-semibold transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-70",
         variants[variant],
         sizes[size],
         className,

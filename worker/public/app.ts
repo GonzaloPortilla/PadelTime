@@ -18,7 +18,7 @@ import { indexPage, messagePage, playerPage, rankingPage, searchPage, type PageC
 type PublicEnv = { Bindings: Env };
 
 /** Cambiar al modificar el HTML, para invalidar copias en caché de versiones anteriores. */
-const RENDER_VERSION = "f4.1";
+const RENDER_VERSION = "f5a.1";
 
 const DEFAULT_ANCESTORS = "https://sites.google.com https://*.googleusercontent.com https://www.padeltime.com.ar https://padeltime.com.ar";
 
@@ -26,7 +26,7 @@ function securityHeaders(env: Env): Record<string, string> {
   const ancestors = (env.PUBLIC_FRAME_ANCESTORS ?? DEFAULT_ANCESTORS).trim() || "'none'";
   return {
     // Permite incrustar en Google Sites (y el dominio propio); sin X-Frame-Options a propósito.
-    "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'self' ${ancestors}`,
+    "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' data:; font-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'self' ${ancestors}`,
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",

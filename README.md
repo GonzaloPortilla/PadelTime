@@ -4,7 +4,7 @@ Aplicación web para gestionar los torneos y rankings de Padel Time: jugadores, 
 
 **Costo operativo mensual: USD 0.** Corre íntegramente en el plan gratuito de Cloudflare (Workers + D1 + Static Assets), sin servicios pagos.
 
-> Estado: **Fase 4 (migración de rankings existentes y publicación web)**.
+> Estado: **Fase 5A (rediseño visual con la identidad de Padel Time)**. Sistema de diseño en [`docs/DISENO.md`](docs/DISENO.md).
 
 ---
 

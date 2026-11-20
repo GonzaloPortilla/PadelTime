@@ -155,7 +155,7 @@ function CategoryCard({ c, onEdit, onDivision, onToggle, onDelete }: {
   return (
     <li className={cn("px-4 py-3 sm:px-5", !c.active && "bg-slate-50/70")}>
       <div className="flex items-start gap-3">
-        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold tabular", c.active ? "bg-ink-950 text-ball-400" : "bg-slate-200 text-slate-500")}>
+        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold tabular", c.active ? "bg-brand-700 font-display text-white" : "bg-slate-200 text-slate-500")}>
           {c.level}
         </div>
         <div className="min-w-0 flex-1">

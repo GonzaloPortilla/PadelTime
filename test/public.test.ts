@@ -210,7 +210,8 @@ describe("páginas públicas de rankings", () => {
     expect(ri.status, JSON.stringify(ri.json)).toBe(201);
     const { html } = await page(`/publico/ranking/${s.season.id}/${s.cab4.id}`);
     expect(html).not.toContain("<script>alert");
-    expect(html).not.toContain('"><img');
+    expect(html).not.toContain('X"><img src=x>');
+    expect(html).toContain('X&quot;&gt;&lt;img src=x&gt;');
     expect(html).toContain("&lt;script&gt;");
   });
 

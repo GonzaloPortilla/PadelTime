@@ -87,9 +87,9 @@ function TiebreakersDialog({ seasonId, current, readOnly, onClose }: { seasonId:
 }
 
 function PositionCell({ r }: { r: RankingRow }) {
-  const medal = r.position <= 3 ? ["bg-ball-400 text-ink-950", "bg-slate-200 text-slate-700", "bg-amber-200 text-amber-900"][r.position - 1] : "text-slate-500";
+  const medal = r.position <= 3 ? ["bg-ball-400 text-white shadow-sm shadow-ball-600/30", "bg-brand-700 text-white", "bg-brand-100 text-brand-800"][r.position - 1] : "text-slate-500";
   return (
-    <span className={cn("inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-sm font-bold tabular", medal)} title={r.tied ? "Posición compartida" : undefined}>
+    <span className={cn("inline-flex h-8 min-w-8 items-center justify-center rounded-full px-1.5 font-display text-base font-semibold tabular", medal)} title={r.tied ? "Posición compartida" : undefined}>
       {r.position}{r.tied && "="}
     </span>
   );
@@ -220,7 +220,7 @@ export function RankingsPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm" data-testid="ranking-table">
                 <thead>
-                  <tr className="border-b border-slate-100 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+                  <tr className="border-b border-brand-100 bg-brand-50/60 text-left text-xs font-semibold uppercase tracking-wide text-brand-800">
                     <th className="w-14 px-4 py-2 text-center">Pos.</th>
                     <th className="px-3 py-2">Jugador</th>
                     <th className="px-3 py-2 text-right">Puntos</th>
@@ -242,7 +242,7 @@ export function RankingsPage() {
                         <span className="ml-2 font-mono text-xs text-slate-400">{r.code}</span>
                         {!r.active && <Badge className="ml-2">Inactivo</Badge>}
                       </td>
-                      <td className="px-3 py-2.5 text-right text-base font-bold tabular text-slate-900">{r.points}</td>
+                      <td className="px-3 py-2.5 text-right font-display text-lg font-semibold tabular text-navy">{r.points}</td>
                       <td className="px-3 py-2.5 text-right tabular text-slate-600">{r.tournaments}</td>
                       <td className="px-3 py-2.5 text-right tabular text-slate-600">{r.titles || "—"}</td>
                       <td className="px-3 py-2.5 text-right tabular text-slate-600">{r.finals || "—"}</td>

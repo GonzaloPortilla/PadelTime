@@ -35,59 +35,51 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh">
-      <div className="relative hidden flex-1 overflow-hidden bg-ink-950 lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <Logo />
-        <div className="relative z-10 max-w-md">
-          <h1 className="text-4xl font-bold leading-tight tracking-tight text-white">
-            Rankings de pádel, <span className="text-ball-400">sin planillas</span>.
-          </h1>
-          <p className="mt-4 text-slate-300">
-            Jugadores, categorías, temporadas y torneos en un solo lugar, siempre actualizados para todo el equipo organizador.
-          </p>
-        </div>
-        <p className="relative z-10 text-xs text-slate-500">Acceso exclusivo para organizadores de Padel Time.</p>
-        {/* Cancha estilizada */}
-        <svg viewBox="0 0 400 600" className="absolute -right-24 top-1/2 h-[120%] -translate-y-1/2 opacity-[0.12]" aria-hidden>
-          <rect x="20" y="20" width="360" height="560" rx="8" fill="none" stroke="#c6f432" strokeWidth="6" />
-          <line x1="20" y1="300" x2="380" y2="300" stroke="#c6f432" strokeWidth="8" />
-          <line x1="20" y1="160" x2="380" y2="160" stroke="#c6f432" strokeWidth="4" />
-          <line x1="20" y1="440" x2="380" y2="440" stroke="#c6f432" strokeWidth="4" />
-          <line x1="200" y1="160" x2="200" y2="440" stroke="#c6f432" strokeWidth="4" />
-        </svg>
+    <div className="brand-waves flex min-h-dvh flex-col lg:flex-row">
+      {/* Identidad: logotipo oficial sobre las ondas azul y verde de la web */}
+      <div className="hidden flex-1 flex-col items-center justify-center px-12 pb-40 pt-12 text-center lg:flex">
+        <Logo variant="completo" className="w-72 drop-shadow-sm" />
+        <p className="mt-6 font-display text-3xl font-bold uppercase tracking-wide text-navy">Comunidad de pádel</p>
+        <p className="mt-2 max-w-md text-slate-600">
+          Torneos, puntos y rankings en un solo lugar, siempre actualizados para todo el equipo organizador.
+        </p>
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
-        <div className="w-full max-w-sm">
-          <Logo dark className="mb-8 lg:hidden" />
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Ingresar</h2>
-          <p className="mt-1 text-sm text-slate-500">Usá las credenciales que te dio el administrador.</p>
-          <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
-            <FormError message={form.formError} />
-            <TextField
-              label="Usuario"
-              name="username"
-              autoComplete="username"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              value={form.values.username}
-              onChange={(e) => form.set("username", e.target.value)}
-              error={form.errors.username}
-            />
-            <TextField
-              label="Contraseña"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={form.values.password}
-              onChange={(e) => form.set("password", e.target.value)}
-              error={form.errors.password}
-            />
-            <Button type="submit" loading={loading} className="w-full" icon={<LogIn className="size-4" />}>
-              Ingresar
-            </Button>
-          </form>
+      <div className="flex flex-1 items-start justify-center px-4 pb-40 pt-10 sm:px-6 lg:items-center lg:pb-12">
+        <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl shadow-brand-900/10 ring-1 ring-slate-200">
+          <div className="brand-stripe h-1.5" aria-hidden />
+          <div className="px-6 py-8 sm:px-8">
+            <Logo variant="completo" className="mx-auto mb-6 w-36 lg:hidden" />
+            <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-navy">Ingresar</h2>
+            <p className="mt-1 text-sm text-slate-500">Usá las credenciales que te dio el administrador.</p>
+            <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+              <FormError message={form.formError} />
+              <TextField
+                label="Usuario"
+                name="username"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                value={form.values.username}
+                onChange={(e) => form.set("username", e.target.value)}
+                error={form.errors.username}
+              />
+              <TextField
+                label="Contraseña"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={form.values.password}
+                onChange={(e) => form.set("password", e.target.value)}
+                error={form.errors.password}
+              />
+              <Button type="submit" loading={loading} className="h-11 w-full" icon={<LogIn className="size-4" />}>
+                Ingresar
+              </Button>
+            </form>
+            <p className="mt-6 text-center text-xs text-slate-400">Acceso exclusivo para organizadores de Padel Time.</p>
+          </div>
         </div>
       </div>
     </div>

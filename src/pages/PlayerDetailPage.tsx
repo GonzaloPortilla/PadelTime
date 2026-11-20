@@ -67,11 +67,11 @@ export function PlayerDetailPage() {
 
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-ink-950 text-lg font-bold text-ball-400">
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-brand-700 font-display text-xl font-semibold text-white ring-2 ring-ball-400 ring-offset-2">
             {p.firstName[0]}{p.lastName[0]}
           </div>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{p.firstName} {p.lastName}</h1>
+            <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-navy sm:text-3xl">{p.firstName} {p.lastName}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700">{p.code}</span>
               {p.nickname && <span>“{p.nickname}”</span>}

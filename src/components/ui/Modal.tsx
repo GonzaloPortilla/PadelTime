@@ -40,7 +40,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-ink-950/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         ref={panelRef}
         role="dialog"
@@ -48,13 +48,14 @@ export function Modal({ open, onClose, title, description, children, footer, siz
         aria-labelledby="modal-title"
         tabIndex={-1}
         className={cn(
-          "relative flex max-h-[92dvh] w-full flex-col rounded-t-2xl bg-white shadow-xl outline-none sm:rounded-2xl",
+          "relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl outline-none sm:rounded-2xl",
           size === "lg" ? "sm:max-w-2xl" : "sm:max-w-lg",
         )}
       >
+        <div className="brand-stripe h-1 shrink-0" aria-hidden />
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            <h2 id="modal-title" className="text-base font-semibold text-slate-900">{title}</h2>
+            <h2 id="modal-title" className="font-display text-lg font-semibold tracking-wide text-navy">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
           </div>
           <button

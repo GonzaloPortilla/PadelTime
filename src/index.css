@@ -1,25 +1,89 @@
 @import "tailwindcss";
 
+/*
+ * Sistema de diseño de Padel Time (Fase 5A).
+ * Colores medidos sobre el logotipo y la web oficial (padeltime.com.ar):
+ *   azul del logo  #0F5A93  ·  verde del logo (“TIME” y pelota)  #57AA57
+ *   azul de títulos #1C4587 ·  verde claro de la barra de avisos  #B6D7A8
+ * Tipografías de la web: Oswald (títulos) y Comfortaa (navegación). Se sirven desde el propio sitio.
+ * Los nombres de los tokens (brand, ball, ink, surface) se conservan para no tocar los componentes:
+ *   brand = azul Padel Time · ball = verde Padel Time · ink = azul profundo (superficies oscuras).
+ */
+
+@font-face {
+  font-family: "Oswald";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/pub/fonts/oswald-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oswald";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/pub/fonts/oswald-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Oswald";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/pub/fonts/oswald-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/pub/fonts/comfortaa-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Comfortaa";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/pub/fonts/comfortaa-latin-700-normal.woff2") format("woff2");
+}
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Títulos, cifras grandes y posiciones */
+  --font-display: "Oswald", "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  /* Marca y navegación, como en la web oficial */
+  --font-brand: "Comfortaa", ui-sans-serif, system-ui, sans-serif;
 
-  --color-ink-950: #0b1f1a;
-  --color-ink-900: #10302a;
-  --color-ink-800: #17423a;
+  /* Azul Padel Time (acciones, enlaces, selección) */
+  --color-brand-50: #eef5fb;
+  --color-brand-100: #d8e7f4;
+  --color-brand-200: #b0cde8;
+  --color-brand-300: #80add6;
+  --color-brand-400: #4a8bc2;
+  --color-brand-500: #2471ae;
+  --color-brand-600: #13659f;
+  --color-brand-700: #0f5a93;
+  --color-brand-800: #0c4a79;
+  --color-brand-900: #0a3b60;
 
-  --color-brand-50: #ecfdf6;
-  --color-brand-100: #d1fae9;
-  --color-brand-200: #a7f3d6;
-  --color-brand-500: #10b981;
-  --color-brand-600: #059669;
-  --color-brand-700: #047857;
-  --color-brand-800: #065f46;
+  /* Verde Padel Time (acentos, logros, pelota) */
+  --color-ball-50: #eff8ec;
+  --color-ball-100: #ddf0d6;
+  --color-ball-200: #c6e4bb;
+  --color-ball-300: #b6d7a8;
+  --color-ball-400: #57aa57;
+  --color-ball-500: #3f8f42;
+  --color-ball-600: #337735;
+  --color-ball-700: #2a612c;
 
-  --color-ball-300: #dcfb7a;
-  --color-ball-400: #c6f432;
-  --color-ball-500: #a8d61a;
+  /* Azul profundo para superficies oscuras (avisos, barras flotantes, pasos) */
+  --color-ink-950: #0b2d4e;
+  --color-ink-900: #0e3a63;
+  --color-ink-800: #164b7d;
 
-  --color-surface: #f6f8f7;
+  /* Azul de los títulos de la web */
+  --color-navy: #1c4587;
+
+  --color-surface: #f3f6f9;
 }
 
 @layer base {
@@ -36,4 +100,18 @@
 
 @utility tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Franja azul/verde de la marca (se usa como borde superior de encabezados). */
+@utility brand-stripe {
+  background-image: linear-gradient(90deg, var(--color-brand-700) 0 62%, var(--color-ball-400) 62% 100%);
+}
+
+/* Fondo con las ondas azul y verde del banner de la web, abajo. */
+@utility brand-waves {
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320' preserveAspectRatio='none'%3E%3Cpath fill='%230f5a93' d='M0 60 C 360 260 900 280 1440 120 L1440 320 L0 320Z'/%3E%3Cpath fill='%2357aa57' d='M0 190 C 420 330 1000 300 1440 60 L1440 320 L0 320Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: bottom center;
+  background-size: 100% 42%;
 }

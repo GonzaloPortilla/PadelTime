@@ -155,7 +155,7 @@ export function TournamentPage() {
       </Link>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{t.name}</h1>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-navy sm:text-3xl">{t.name}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <span>{t.seasonName}</span>·<span>{formatRange(t.startDate, t.endDate)}</span>
             <TournamentTypeBadge type={t.type} />
@@ -173,8 +173,8 @@ export function TournamentPage() {
         <div className="flex gap-1">
           {TABS.map((x) => (
             <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} onClick={() => setTab(x.key)}
-              className={cn("whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
-                tab === x.key ? "border-brand-600 text-brand-800" : "border-transparent text-slate-500 hover:text-slate-800")}>
+              className={cn("whitespace-nowrap border-b-[3px] px-3 py-2.5 font-brand text-[13px] font-bold transition-colors",
+                tab === x.key ? "border-ball-400 text-brand-700" : "border-transparent text-slate-500 hover:text-brand-700")}>
               {x.label}
             </button>
           ))}

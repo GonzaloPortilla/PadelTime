@@ -86,7 +86,7 @@ export function ReviewStep({ draft, onChange, onBack, onNext, mode }: Props) {
       <div className="flex flex-col gap-4 lg:flex-row lg:overflow-x-auto lg:pb-2">
         {draft.rounds.map((round, r) => (
           <section key={r} className="lg:w-[27rem] lg:shrink-0" aria-label={round.label}>
-            <h3 className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="mb-2 flex items-center justify-between font-display text-sm font-semibold uppercase tracking-wide text-navy">
               <span>{ROUND_LABEL[round.key]}</span>
               {round.label && round.label.toUpperCase() !== ROUND_LABEL[round.key]!.toUpperCase() && <span className="font-normal normal-case text-slate-400">leído: “{round.label}”</span>}
             </h3>
