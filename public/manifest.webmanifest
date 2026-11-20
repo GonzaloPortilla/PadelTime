@@ -1,0 +1,10 @@
+{
+  "name": "Padel Time",
+  "short_name": "Padel Time",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8f7",
+  "theme_color": "#0b1f1a",
+  "lang": "es-AR",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

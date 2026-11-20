@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "padel-time",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-11-01",
+  // La SPA se sirve como assets estáticos (gratis e ilimitados en el plan Free).
+  // Sólo /api/* y la vista pública /publico/* ejecutan el Worker (cuentan para las 100.000 requests/día).
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/publico", "/publico/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "padel-time",
+      // Reemplazar por el ID que devuelve `npx wrangler d1 create padel-time`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    // Días de validez de una sesión sin actividad.
+    "SESSION_TTL_DAYS": "30",
+    // Iteraciones PBKDF2-SHA256 para hashes nuevos. 30000 ≈ 6 ms de CPU: entra en el límite
+    // de 10 ms/request del plan Free. Con plan pago puede subirse hasta 100000 (máximo de Workers).
+    "PBKDF2_ITERATIONS": "30000",
+    // Sitios autorizados a incrustar las páginas públicas (/publico) en un iframe.
+    // Google Sites sirve el contenido incrustado desde sites.google.com y *.googleusercontent.com.
+    "PUBLIC_FRAME_ANCESTORS": "https://sites.google.com https://*.googleusercontent.com https://www.padeltime.com.ar https://padeltime.com.ar"
+  },
+  "observability": { "enabled": true }
+}

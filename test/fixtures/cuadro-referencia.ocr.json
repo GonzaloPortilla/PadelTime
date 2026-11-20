@@ -1,0 +1,414 @@
+{
+  "mode": "estructura",
+  "blocks": [
+    {
+      "id": "b0",
+      "column": 0,
+      "y": 4,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "ARIEL GONZALEZ - DIEGO CEJAS",
+          "nameConf": 94,
+          "scoreText": "5",
+          "score": 5,
+          "scoreConf": 0,
+          "marked": true,
+          "markRatio": 0.067
+        },
+        {
+          "nameText": "DIEGO HARRIEGUE - MAXI FERNANDEZ",
+          "nameConf": 93,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b1",
+      "column": 0,
+      "y": 68,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "LEONEL LARREA - LUCAS LARREA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "GONZALO CALANDRA - GONZALO FABRO",
+          "nameConf": 92,
+          "scoreText": "4",
+          "score": 4,
+          "scoreConf": 73,
+          "marked": true,
+          "markRatio": 0.067
+        }
+      ]
+    },
+    {
+      "id": "b2",
+      "column": 0,
+      "y": 132,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "ARIEL BUFFA - LEANDRO GOROSITO",
+          "nameConf": 92,
+          "scoreText": "3",
+          "score": 3,
+          "scoreConf": 84,
+          "marked": true,
+          "markRatio": 0.067
+        },
+        {
+          "nameText": "LEO MOSQUERA - TIMO MOSQUERA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b3",
+      "column": 0,
+      "y": 196,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "FACU CASTILLO - DANTE STASSI",
+          "nameConf": 91,
+          "scoreText": "2",
+          "score": 2,
+          "scoreConf": 71,
+          "marked": true,
+          "markRatio": 0.067
+        },
+        {
+          "nameText": "GUIDO GROSSO - GASTON ANDREASSI",
+          "nameConf": 91,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 13,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "column": 0,
+      "y": 260,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "EZEQUIEL CESAR - MARCELO AMPUERO",
+          "nameConf": 93,
+          "scoreText": "4",
+          "score": 4,
+          "scoreConf": 73,
+          "marked": true,
+          "markRatio": 0.067
+        },
+        {
+          "nameText": "TOMAS IVENICEVICH - SANTIAGO WOLF",
+          "nameConf": 93,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b5",
+      "column": 0,
+      "y": 324,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "MILTON GONZALEZ - EZE FONTOURA",
+          "nameConf": 92,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "NICOLAS EMULO - CHECHO",
+          "nameConf": 92,
+          "scoreText": "4",
+          "score": 4,
+          "scoreConf": 73,
+          "marked": true,
+          "markRatio": 0.067
+        }
+      ]
+    },
+    {
+      "id": "b6",
+      "column": 0,
+      "y": 388,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "NICOLAS SALAS - MILTON AHUMADA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "SERGIO ZANON - TIZIANO ZANON",
+          "nameConf": 92,
+          "scoreText": "1",
+          "score": 1,
+          "scoreConf": 72,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b7",
+      "column": 0,
+      "y": 452,
+      "headerText": "OCTAVOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "NICOLAS STAMPONE - LEAN SODERO",
+          "nameConf": 91,
+          "scoreText": "4",
+          "score": 4,
+          "scoreConf": 55,
+          "marked": true,
+          "markRatio": 0.067
+        },
+        {
+          "nameText": "JORGE PIPINO - MATIAS ROCHELLE",
+          "nameConf": 93,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b8",
+      "column": 1,
+      "y": 52,
+      "headerText": "CUARTOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "DIEGO HARRIEGUE - MAXI FERNANDEZ",
+          "nameConf": 93,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "LEONEL LARREA - LUCAS LARREA",
+          "nameConf": 94,
+          "scoreText": "5",
+          "score": 5,
+          "scoreConf": 0,
+          "marked": true,
+          "markRatio": 0.067
+        }
+      ]
+    },
+    {
+      "id": "b9",
+      "column": 1,
+      "y": 180,
+      "headerText": "CUARTOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "LEO MOSQUERA - TIMO MOSQUERA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "GUIDO GROSSO - GASTON ANDREASSI",
+          "nameConf": 91,
+          "scoreText": "1",
+          "score": 1,
+          "scoreConf": 72,
+          "marked": true,
+          "markRatio": 0.067
+        }
+      ]
+    },
+    {
+      "id": "b10",
+      "column": 1,
+      "y": 276,
+      "headerText": "CUARTOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "TOMAS IVENICEVICH - SANTIAGO WOLF",
+          "nameConf": 93,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 96,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "MILTON GONZALEZ - EZE FONTOURA",
+          "nameConf": 92,
+          "scoreText": "5",
+          "score": 5,
+          "scoreConf": 0,
+          "marked": true,
+          "markRatio": 0.067
+        }
+      ]
+    },
+    {
+      "id": "b11",
+      "column": 1,
+      "y": 420,
+      "headerText": "CUARTOS",
+      "headerConf": 96,
+      "rows": [
+        {
+          "nameText": "NICOLAS SALAS - MILTON AHUMADA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 19,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "JORGE PIPINO - MATIAS ROCHELLE",
+          "nameConf": 93,
+          "scoreText": "4",
+          "score": 4,
+          "scoreConf": 53,
+          "marked": true,
+          "markRatio": 0.067
+        }
+      ]
+    },
+    {
+      "id": "b12",
+      "column": 2,
+      "y": 116,
+      "headerText": "SEMIS",
+      "headerConf": 84,
+      "rows": [
+        {
+          "nameText": "DIEGO HARRIEGUE - MAXI FERNANDEZ",
+          "nameConf": 93,
+          "scoreText": "3",
+          "score": 3,
+          "scoreConf": 76,
+          "marked": true,
+          "markRatio": 0.063
+        },
+        {
+          "nameText": "LEO MOSQUERA - TIMO MOSQUERA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 32,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b13",
+      "column": 2,
+      "y": 340,
+      "headerText": "SEMIS",
+      "headerConf": 84,
+      "rows": [
+        {
+          "nameText": "TOMAS IVENICEVICH - SANTIAGO WOLF",
+          "nameConf": 93,
+          "scoreText": "4",
+          "score": 4,
+          "scoreConf": 65,
+          "marked": false,
+          "markRatio": 0
+        },
+        {
+          "nameText": "NICOLAS SALAS - MILTON AHUMADA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 32,
+          "marked": false,
+          "markRatio": 0
+        }
+      ]
+    },
+    {
+      "id": "b14",
+      "column": 3,
+      "y": 228,
+      "headerText": "FINAL",
+      "headerConf": 95,
+      "rows": [
+        {
+          "nameText": "LEO MOSQUERA - TIMO MOSQUERA",
+          "nameConf": 94,
+          "scoreText": "2",
+          "score": 2,
+          "scoreConf": 46,
+          "marked": null,
+          "markRatio": 0
+        },
+        {
+          "nameText": "NICOLAS SALAS - MILTON AHUMADA",
+          "nameConf": 94,
+          "scoreText": "6",
+          "score": 6,
+          "scoreConf": 0,
+          "marked": null,
+          "markRatio": 0
+        }
+      ]
+    }
+  ],
+  "columns": 4,
+  "imageWidth": 1222,
+  "imageHeight": 525,
+  "elapsedMs": 2800
+}
