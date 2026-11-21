@@ -130,9 +130,75 @@ Confirmado en el reglamento publicado (página Reglamentos):
 - Los resultados se controlan **por partido**: dos personas cargando partidos distintos no se bloquean, pero si dos cargan el mismo, el segundo recibe el aviso.
 - Las escrituras se hacen en un único lote protegido. Si otro escribió en el medio, no se aplica nada.
 
+## Del fixture a los puntos y al ranking (Fase 10)
+
+El fixture alimenta al **mismo** motor de puntuación y acreditación de siempre: no hay un segundo sistema de puntos.
+
+**Circuito completo de un torneo largo:**
+
+1. Crear la competencia (Eventos).
+2. Registrar las parejas.
+3. Generar grupos y fixture. El torneo pasa solo a **En curso**.
+4. Cargar resultados.
+5. Las posiciones se actualizan solas.
+6. Se determinan los clasificados a Oro y Plata.
+7. Se completan los cuadros.
+8. Al terminar, la pestaña **Fixture → Puntos** muestra las **posiciones finales** de cada pareja.
+9. Cada posición se asocia a una **instancia de la puntuación del torneo**: la plantilla configurada, editable en Puntuación.
+10. Se revisa la **distribución de puntos**, calculada por el motor existente (`computePreview`), con las mismas reglas de categoría principal, bonificaciones y cupos.
+11. **Aplicar posiciones al torneo** completa la instancia, los partidos jugados y los ganados de cada pareja: las mismas entradas que se cargaban a mano. El torneo pasa a **Finalizado**. **No acredita.**
+12. En **Acreditación** se confirma con el flujo de siempre, y los rankings públicos se actualizan solos.
+
+**Posiciones finales y equivalencia propuesta (editable):**
+
+| Posición final | Instancia propuesta |
+|---|---|
+| Campeón de Oro (o del cuadro) | Campeón |
+| Finalista de Oro | Finalista |
+| Semifinal / Cuartos / Octavos de Oro | Semifinal, Cuartos de final, Octavos de final |
+| Cualquier posición de Plata | **Fase de grupos**, marcado «Revisar»: el reglamento no define puntos para la Plata. Si corresponden otros, se agrega la instancia en Puntuación y se elige. |
+| No pasó de la fase de grupos | Fase de grupos |
+
+**Partidos para las bonificaciones:** cuentan los jugados, con retiro o con resultado administrativo. Un W.O. o un BYE no son partidos disputados.
+
+**Nunca se acredita por cargar un resultado.** No hay ninguna regla de acreditación automática.
+
+### Una sola fuente de verdad
+
+- Si un torneo tiene partidos en el fixture, sus instancias **sólo** salen del fixture. La carga manual en *Parejas y resultados* y la importación de cuadro quedan bloqueadas para ese torneo (se pueden seguir inscribiendo parejas).
+- La acreditación se rechaza mientras el fixture no terminó o sus posiciones finales no están aplicadas. Así nunca se acreditan datos viejos ni a medio cargar.
+
+### Correcciones
+
+1. Al corregir un resultado, **Revisar cambios** muestra, antes de guardar:
+   - cambios de posiciones en los grupos;
+   - cruces sin jugar que se actualizan solos;
+   - **conflictos** con partidos ya jugados, que no se sobrescriben;
+   - cambios en las posiciones finales;
+   - y si el torneo tiene puntos acreditados.
+2. Se guarda con **motivo**: responsable, fecha y motivo quedan en el historial y la auditoría.
+3. Si el torneo ya acreditó, los puntos **no cambian solos**. Aparece el problema «Los resultados cambiaron después de acreditar», y en **Puntos** se ven las **diferencias** con la acreditación vigente, jugador por jugador.
+4. **Aplicar corrección al torneo** exige motivo.
+5. **Confirmar corrección** en Acreditación usa el mecanismo transaccional existente: contraasientos de la versión vigente y nueva versión, en una sola operación y sin duplicados.
+
+### Publicación
+
+La página del torneo usa los mismos datos de la base, sin repetir información:
+
+- **Resultado final** con puntos, cuando hay acreditación vigente;
+- **Fixture publicado** con posiciones, partidos y cuadros de Oro y Plata (la lista de parejas no se repite);
+- otras categorías del evento.
+
+Los rankings anuales se actualizan al acreditar.
+
+### Torneos antiguos y Satélites
+
+- Los torneos largos sin fixture siguen con carga manual y acreditación como siempre.
+- Los Satélites / Americanos conservan exactamente su flujo: crear → configurar puntos → cargar el cuadro final por imagen o a mano → revisar → confirmar. Muestran públicamente el resultado final y los puntos.
+
 ## Qué no cambia
 
-- **Acreditación anual:** sin cambios. Al terminar la competencia, las instancias se siguen cargando en *Parejas y resultados* y se acredita como siempre. El fixture no genera movimientos de puntos (lo verifican las pruebas).
+- **Motor de acreditación:** sin cambios en sus reglas. El fixture sólo le entrega las instancias y los partidos de cada pareja. Nunca genera movimientos de puntos por sí mismo (lo verifican las pruebas).
 - Torneos, parejas, acreditaciones e historiales existentes: la migración 0007 sólo agrega tablas y columnas.
 - Satélites / Americanos: cuadro final y acreditación como hasta ahora.
 

@@ -13,14 +13,15 @@ import { cn } from "@/lib/cn";
 import { ErrorNote, fx, useFixtureMutation, type FxCtx } from "./common";
 import { ConfigPanel, GroupsPanel } from "./SetupPanels";
 import { BracketsPanel, HistoryPanel, IssuesPanel, MatchesPanel, StandingsPanel } from "./PlayPanels";
+import { PointsPanel } from "./PointsPanel";
 
-type Sub = "config" | "grupos" | "partidos" | "posiciones" | "copas" | "problemas" | "historial";
+type Sub = "config" | "grupos" | "partidos" | "posiciones" | "copas" | "puntos" | "problemas" | "historial";
 
 /**
  * Fixture de un torneo largo (Fase 9). Todo se guarda al instante; la web pública muestra sólo lo
  * publicado, así que el organizador decide cuándo "Publicar" los cambios.
  */
-export function FixtureTab({ tournament }: { tournament: Tournament }) {
+export function FixtureTab({ tournament, onGoToCredit }: { tournament: Tournament; onGoToCredit?: () => void }) {
   const { user } = useAuth();
   const q = useQuery({
     queryKey: keys.fixture(tournament.id),
@@ -39,11 +40,12 @@ export function FixtureTab({ tournament }: { tournament: Tournament }) {
     { key: "partidos", label: "Partidos", show: true },
     { key: "posiciones", label: "Posiciones", show: isGroups },
     { key: "copas", label: isGroups ? "Copa de Oro / Plata" : "Cuadro", show: true },
+    { key: "puntos", label: state.final.complete && !state.final.applied ? "Puntos •" : "Puntos", show: true },
     { key: "problemas", label: `Problemas${state.issues.length ? ` (${state.issues.length})` : ""}`, show: true },
     { key: "historial", label: "Historial", show: true },
   ];
   // Pestaña inicial según el avance del fixture.
-  const current: Sub = sub ?? (!state.matches.length ? (state.groups.length || !isGroups ? "copas" : "grupos") : "partidos");
+  const current: Sub = sub ?? (state.final.complete ? "puntos" : !state.matches.length ? (state.groups.length || !isGroups ? "copas" : "grupos") : "partidos");
 
   return (
     <div className="space-y-4">
@@ -70,6 +72,7 @@ export function FixtureTab({ tournament }: { tournament: Tournament }) {
       {current === "partidos" && <MatchesPanel ctx={ctx} />}
       {current === "posiciones" && <StandingsPanel ctx={ctx} />}
       {current === "copas" && <BracketsPanel ctx={ctx} />}
+      {current === "puntos" && <PointsPanel ctx={ctx} onGoToCredit={onGoToCredit} />}
       {current === "problemas" && <IssuesPanel ctx={ctx} />}
       {current === "historial" && <HistoryPanel ctx={ctx} />}
     </div>

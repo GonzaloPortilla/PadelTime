@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { MATCH_STATUS_LABEL, RESULT_STATUSES, checkScore, isDecided, type FixtureMatchRow, type ResultStatus, type SetScore } from "@shared/fixture";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -16,6 +18,10 @@ export function ResultModal({ ctx, match, onClose }: { ctx: FxCtx; match: Fixtur
   const [winner, setWinner] = useState<1 | 2 | null>(match.winner);
   const [notes, setNotes] = useState(match.notes ?? "");
   const [reason, setReason] = useState("");
+  // Fase 10: antes de guardar una corrección se muestran sus consecuencias (sin guardar nada).
+  interface Effects { standings: { group: string; team: string; before: number | null; after: number }[]; bracket: { matchId: number; before: string[]; after: string[] }[]; conflicts: string[]; finalChanges: { team: string; before: string | null; after: string }[]; creditedVersion: number | null }
+  const [effects, setEffects] = useState<{ key: string; data: Effects } | null>(null);
+  const review = useMutation({ mutationFn: (body: unknown) => api.post<Effects>(`/tournaments/${ctx.tid}/fixture/matches/${match.id}/result-preview`, body) });
   const save = useFixtureMutation(ctx.tid, (body: unknown) => fx.put(ctx.tid, `/matches/${match.id}/result`, body), correction ? "Resultado corregido" : "Resultado cargado");
 
   const parsed: SetScore[] = sets.filter(([a, b]) => a !== "" || b !== "").map(([a, b]) => [Number(a || 0), Number(b || 0)]);
@@ -25,6 +31,9 @@ export function ResultModal({ ctx, match, onClose }: { ctx: FxCtx; match: Fixtur
   const needsWinner = status !== "jugado";
   const setCell = (i: number, side: 0 | 1, v: string) => setSets((prev) => prev.map((row, j) => (j === i ? (side === 0 ? [v.replace(/\D/g, "").slice(0, 2), row[1]!] : [row[0]!, v.replace(/\D/g, "").slice(0, 2)]) : row)));
 
+  const bodyKey = JSON.stringify({ status, sets: check.ok ? check.sets : null, winner: check.ok ? check.winner : null });
+  const reviewed = effects?.key === bodyKey;
+  const doReview = () => check.ok && review.mutate({ status, sets: check.sets, winner: check.winner }, { onSuccess: (data) => setEffects({ key: bodyKey, data }) });
   const submit = () => {
     if (!check.ok) return;
     save.mutate({ version: match.version, status, sets: check.sets, winner: check.winner, notes: notes || null, reason: reason || null }, { onSuccess: onClose });
@@ -32,7 +41,9 @@ export function ResultModal({ ctx, match, onClose }: { ctx: FxCtx; match: Fixtur
 
   return (
     <Modal open onClose={onClose} title={correction ? "Corregir resultado" : "Cargar resultado"} description={`${t1} vs ${t2}`}
-      footer={<><Button variant="secondary" onClick={onClose}>Cancelar</Button><Button onClick={submit} loading={save.isPending} disabled={!check.ok || (correction && reason.trim().length < 5)}>Guardar</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>Cancelar</Button>{correction && !reviewed
+        ? <Button onClick={doReview} loading={review.isPending} disabled={!check.ok}>Revisar cambios</Button>
+        : <Button onClick={submit} loading={save.isPending} disabled={!check.ok || (correction && reason.trim().length < 5)}>Guardar</Button>}</>}>
       <div className="space-y-4">
         <ErrorNote message={save.error} />
         <SelectField label="Tipo de resultado" value={status} onChange={(e) => setStatus(e.target.value as ResultStatus)}>
@@ -83,11 +94,29 @@ export function ResultModal({ ctx, match, onClose }: { ctx: FxCtx; match: Fixtur
           <p className="rounded-lg bg-amber-50 p-2.5 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">{check.error}</p>
         )}
         <TextField label="Observaciones" value={notes} maxLength={300} onChange={(e) => setNotes(e.target.value)} hint="Opcional. Se guardan en el historial." />
+        {correction && reviewed && effects && <EffectsList e={effects.data} />}
         {correction && (
           <TextField label="Motivo de la corrección" required value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)}
             hint="Obligatorio. Si el cambio afecta partidos posteriores ya jugados, no se modifican: queda un conflicto para resolver." />
         )}
       </div>
     </Modal>
+  );
+}
+
+function EffectsList({ e }: { e: { standings: { group: string; team: string; before: number | null; after: number }[]; bracket: { matchId: number; before: string[]; after: string[] }[]; conflicts: string[]; finalChanges: { team: string; before: string | null; after: string }[]; creditedVersion: number | null } }) {
+  const none = !e.standings.length && !e.bracket.length && !e.conflicts.length && !e.finalChanges.length;
+  return (
+    <div className="space-y-2 rounded-lg bg-slate-50 p-3 text-sm ring-1 ring-inset ring-slate-200" data-testid="correction-effects">
+      <p className="font-semibold text-slate-800">Qué cambia al guardar</p>
+      {none && <p className="text-slate-600">No cambia ninguna posición ni otro partido.</p>}
+      {e.standings.map((x, i) => <p key={`s${i}`}>Grupo {x.group}: {x.team} pasa del {x.before ?? "—"}° al <b>{x.after}°</b>.</p>)}
+      {e.bracket.map((x, i) => <p key={`b${i}`}>Se actualiza un cruce sin jugar: {x.before.join(" vs ")} → <b>{x.after.join(" vs ")}</b>.</p>)}
+      {e.conflicts.map((x, i) => <p key={`c${i}`} className="text-red-700">Conflicto: {x} No se modifica solo: lo resuelve un administrador.</p>)}
+      {e.finalChanges.map((x, i) => <p key={`f${i}`}>{x.team}: {x.before ?? "—"} → <b>{x.after}</b>.</p>)}
+      {e.creditedVersion !== null && (e.finalChanges.length > 0 || e.conflicts.length > 0) && (
+        <p className="rounded-md bg-amber-50 p-2 text-amber-900 ring-1 ring-inset ring-amber-200">El torneo tiene puntos acreditados (v{e.creditedVersion}): los puntos no cambian solos. Después vas a tener que aplicar las posiciones en «Puntos» y confirmar la corrección en Acreditación.</p>
+      )}
+    </div>
   );
 }

@@ -2,15 +2,17 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 import {
   FIXTURE_PHASES, RESULT_STATUSES, buildPublicFixture, bracketSize, bracketSkeleton, checkScore, cupEntries, fixtureConfigSchema,
-  fixtureIssues, groupName, groupStanding, isDecided, parseFixtureConfig, placeEntries, roundRobin, seedFromTeams, sourceKey, syncBrackets,
+  defaultStageMap, finalPlacements, fixtureComplete, fixtureIssues, groupName, groupStanding, isDecided, parseFixtureConfig, placeEntries, roundRobin, seedFromTeams, sourceKey, syncBrackets,
   type BracketPhase, type FixtureConfig, type FixtureHistoryItem, type FixtureMatchRow, type FixtureState, type FixtureTeamRow,
-  type FxGroup, type GroupStanding, type SlotSource,
+  type FixtureIssue, type FxGroup, type GroupStanding, type SlotSource,
 } from "@shared/fixture";
 import { tournamentPath } from "@shared/site";
 import type { SeasonStatus, TournamentStatus, TournamentType } from "@shared/constants";
 import type { AppEnv } from "../types";
 import { badRequest, conflict, HttpError, notFound } from "../lib/errors";
 import { parseBody, parseId } from "../lib/validate";
+import { buildPreview, loadActiveCredit, loadCreditedRows, loadTeams } from "../lib/scoring-data";
+import { diffCredit } from "@shared/scoring";
 
 /**
  * Fixtures de torneos largos (Fase 9): grupos, partidos, resultados, tablas, Copa de Oro / Plata y publicación.
@@ -47,15 +49,15 @@ const json = <T>(v: string | null, fallback: T): T => {
 
 async function loadState(db: D1Database, tid: number): Promise<Loaded> {
   // El fixture se crea vacío (configuración por defecto) la primera vez que se abre.
-  const [tRes, , fxRes, teamRes, gRes, gtRes, mRes, pubRes] = await db.batch([
+  const [tRes, , fxRes, teamRes, gRes, gtRes, mRes, pubRes, stRes, crRes] = await db.batch([
     db.prepare(
       `SELECT t.id, t.name, t.type, t.status, t.season_id, s.status AS season_status, c.name AS category_name, t.public_visible
          FROM tournaments t JOIN seasons s ON s.id = t.season_id JOIN categories c ON c.id = t.category_id WHERE t.id = ?`,
     ).bind(tid),
     db.prepare("INSERT OR IGNORE INTO tournament_fixtures (tournament_id) SELECT id FROM tournaments WHERE id = ? AND type = 'largo'").bind(tid),
-    db.prepare("SELECT f.config, f.version, f.updated_at, u.display_name AS updated_by_name FROM tournament_fixtures f LEFT JOIN users u ON u.id = f.updated_by WHERE f.tournament_id = ?").bind(tid),
+    db.prepare("SELECT f.config, f.stage_map, f.version, f.updated_at, u.display_name AS updated_by_name FROM tournament_fixtures f LEFT JOIN users u ON u.id = f.updated_by WHERE f.tournament_id = ?").bind(tid),
     db.prepare(
-      `SELECT tt.id, tt.seed, tt.withdrawn_at, tt.withdrawn_reason, p.first_name, p.last_name
+      `SELECT tt.id, tt.seed, tt.withdrawn_at, tt.withdrawn_reason, tt.stage_id, tt.matches_played, tt.matches_won, p.first_name, p.last_name
          FROM tournament_teams tt LEFT JOIN tournament_team_players ttp ON ttp.team_id = tt.id LEFT JOIN players p ON p.id = ttp.player_id
         WHERE tt.tournament_id = ? ORDER BY tt.id, ttp.rowid`,
     ).bind(tid),
@@ -66,16 +68,20 @@ async function loadState(db: D1Database, tid: number): Promise<Loaded> {
         WHERE m.tournament_id = ? ORDER BY CASE m.phase WHEN 'grupos' THEN 0 WHEN 'cuadro' THEN 1 WHEN 'oro' THEN 2 ELSE 3 END, m.group_id, m.round, m.slot`,
     ).bind(tid),
     db.prepare("SELECT p.published_at, p.fixture_version, u.display_name AS published_by_name FROM fixture_publications p LEFT JOIN users u ON u.id = p.published_by WHERE p.tournament_id = ?").bind(tid),
+    db.prepare("SELECT id, label, rank, points, max_teams FROM tournament_stages WHERE tournament_id = ? ORDER BY rank").bind(tid),
+    db.prepare("SELECT version FROM tournament_credits WHERE tournament_id = ? AND status = 'vigente'").bind(tid),
   ]);
   const t = tRes!.results[0] as TRow | undefined;
   if (!t) throw notFound("El torneo");
   if (t.type !== "largo") throw conflict("El fixture es sólo para torneos largos. Los Satélites / Americanos se cargan con su cuadro final.");
-  const fx = fxRes!.results[0] as { config: string; version: number; updated_at: string; updated_by_name: string | null };
+  const fx = fxRes!.results[0] as { config: string; stage_map: string | null; version: number; updated_at: string; updated_by_name: string | null };
   const config = parseFixtureConfig(json(fx.config, {}));
 
   const teamMap = new Map<number, FixtureTeamRow>();
-  for (const r of teamRes!.results as { id: number; seed: number | null; withdrawn_at: string | null; withdrawn_reason: string | null; first_name: string | null; last_name: string | null }[]) {
+  const applied = new Map<number, { stageId: number | null; matchesPlayed: number; matchesWon: number }>();
+  for (const r of teamRes!.results as { id: number; seed: number | null; withdrawn_at: string | null; withdrawn_reason: string | null; stage_id: number | null; matches_played: number; matches_won: number; first_name: string | null; last_name: string | null }[]) {
     let tm = teamMap.get(r.id);
+    applied.set(r.id, { stageId: r.stage_id, matchesPlayed: r.matches_played, matchesWon: r.matches_won });
     if (!tm) {
       tm = { id: r.id, name: "", seed: r.seed, withdrawn: r.withdrawn_at !== null, withdrawnReason: r.withdrawn_reason, players: [] };
       teamMap.set(r.id, tm);
@@ -98,19 +104,49 @@ async function loadState(db: D1Database, tid: number): Promise<Loaded> {
   const standings = new Map(standingsList.map((s) => [s.groupId, s]));
   const name = (id: number | null) => (id === null ? "un lugar vacío" : teams.find((x) => x.id === id)?.name ?? `#${id}`);
   const { conflicts } = syncBrackets(matches, standings, name);
+  // Fase 10: posiciones finales y su correspondencia con la puntuación del torneo.
+  const stages = (stRes!.results as { id: number; label: string; rank: number; points: number; max_teams: number | null }[])
+    .map((x) => ({ id: x.id, label: x.label, rank: x.rank, points: x.points, maxTeams: x.max_teams }));
+  const credit = crRes!.results[0] as { version: number } | undefined;
+  const { complete, pending } = fixtureComplete(matches);
+  const placements = complete ? finalPlacements(teams, matches) : [];
+  const savedMap = json<Record<string, number | null> | null>(fx.stage_map, null);
+  const final = {
+    complete, pending, placements, stages, stageMap: savedMap,
+    review: defaultStageMap([...new Set(placements.map((p) => p.key))], stages).review,
+    applied: complete && savedMap !== null && placements.every((p) => {
+      const a = applied.get(p.teamId);
+      return a && a.stageId === (savedMap[p.key] ?? null) && a.matchesPlayed === p.matchesPlayed && a.matchesWon === p.matchesWon;
+    }),
+    creditedVersion: credit?.version ?? null,
+  };
   const pub = pubRes!.results[0] as { published_at: string; fixture_version: number; published_by_name: string | null } | undefined;
   const locked = t.season_status === "cerrada" ? "La temporada está cerrada: el fixture es de sólo lectura."
     : t.status === "cancelado" ? "El torneo está cancelado. Reprogramalo para modificar el fixture." : null;
   return {
     tournament: { id: t.id, name: t.name, status: t.status, categoryName: t.category_name, seasonId: t.season_id, publicVisible: t.public_visible === 1, path: tournamentPath(t) },
     config, version: fx.version, updatedAt: fx.updated_at, updatedByName: fx.updated_by_name, locked,
-    teams, groups, matches, standings: standingsList, conflicts, issues: fixtureIssues(config, teams, groups, matches, standings, conflicts),
+    teams, groups, matches, standings: standingsList, conflicts, final,
+    issues: [...fixtureIssues(config, teams, groups, matches, standings, conflicts), ...finalIssues(final)],
     publication: pub ? { publishedAt: pub.published_at, publishedByName: pub.published_by_name, fixtureVersion: pub.fixture_version } : null,
     raw: { standings },
   };
 }
 
 const publicState = ({ raw: _raw, ...s }: Loaded): FixtureState => s;
+
+/** Avisos del paso fixture → puntos: posiciones finales sin aplicar o distintas de lo acreditado. */
+function finalIssues(f: FixtureState["final"]): FixtureIssue[] {
+  if (!f.complete) return [];
+  if (f.creditedVersion !== null && !f.applied) {
+    return [{ level: "error", code: "puntos_desactualizados", matchIds: [],
+      message: `Los resultados cambiaron después de acreditar los puntos (acreditación v${f.creditedVersion}). Revisá las posiciones finales en «Puntos», aplicalas y confirmá la corrección en Acreditación.` }];
+  }
+  if (f.creditedVersion === null && !f.applied) {
+    return [{ level: "aviso", code: "puntos_pendientes", matchIds: [], message: "La competencia terminó: revisá las posiciones finales en «Puntos» y aplicalas para acreditar." }];
+  }
+  return [];
+}
 
 // ─────────────────────────── Escritura protegida ───────────────────────────
 interface Op {
@@ -273,6 +309,8 @@ fixtureRoutes.put("/:id/fixture/groups", async (c) => {
       stmts: (guard) => [
         db.prepare(`DELETE FROM fixture_matches WHERE tournament_id = ? AND phase = 'grupos' AND ${guard}`).bind(tid),
         db.prepare(`DELETE FROM fixture_groups WHERE tournament_id = ? AND ${guard}`).bind(tid),
+        // Armar el fixture inicia el torneo (estado "En curso"): es lo que el motor exige para acreditar.
+        db.prepare(`UPDATE tournaments SET status = 'en_curso', updated_at = ? WHERE id = ? AND status = 'programado' AND ${guard}`).bind(new Date().toISOString(), tid),
         ...body.groups.flatMap((ids, gi) => {
           const name = groupName(gi);
           const gid = `(SELECT id FROM fixture_groups WHERE tournament_id = ${tid} AND name = '${name}')`;
@@ -375,9 +413,9 @@ fixtureRoutes.post("/:id/fixture/brackets", async (c) => {
     if (body.brackets.length !== proposal.brackets.length) throw badRequest("Faltan cuadros por confirmar");
     // Los partidos nuevos todavía no tienen id: se completan (BYE, clasificados) con un segundo paso.
     return {
-      stmts: (guard) => body.brackets.flatMap((b) => bracketSkeleton(b.phase, b.pairs).map((m) => db.prepare(
+      stmts: (guard) => [db.prepare(`UPDATE tournaments SET status = 'en_curso', updated_at = ? WHERE id = ? AND status = 'programado' AND ${guard}`).bind(new Date().toISOString(), tid), ...body.brackets.flatMap((b) => bracketSkeleton(b.phase, b.pairs).map((m) => db.prepare(
         `INSERT INTO fixture_matches (tournament_id, phase, round, slot, source1, source2, updated_by) SELECT ?, ?, ?, ?, ?, ?, ? WHERE ${guard}`,
-      ).bind(tid, m.phase, m.round, m.slot, m.source1 ? JSON.stringify(m.source1) : null, m.source2 ? JSON.stringify(m.source2) : null, c.get("user").id))),
+      ).bind(tid, m.phase, m.round, m.slot, m.source1 ? JSON.stringify(m.source1) : null, m.source2 ? JSON.stringify(m.source2) : null, c.get("user").id)))],
       audit: `armó ${body.brackets.map((b) => b.phase === "oro" ? "Copa de Oro" : b.phase === "plata" ? "Copa de Plata" : "el cuadro").join(" y ")}`,
     };
   }).then(() => resync(c, tid)) });
@@ -598,3 +636,154 @@ fixtureRoutes.delete("/:id/fixture/publish", async (c) => {
     };
   }) });
 });
+
+// ─────────────────────────── Fase 10: del fixture a la puntuación ───────────────────────────
+const stageMapSchema = z.record(z.string().regex(/^(grupos|(oro|plata|cuadro):\d{1,3})$/), z.number().int().positive().nullable());
+
+/** Valida la equivalencia contra las posiciones finales y las instancias del torneo. */
+function checkStageMap(s: Loaded, map: Record<string, number | null>, requireAll: boolean) {
+  const keys = new Set(s.final.placements.map((p) => p.key));
+  const ids = new Set(s.final.stages.map((x) => x.id));
+  for (const [k, v] of Object.entries(map)) {
+    if (!keys.has(k)) throw badRequest(`La posición «${k}» no corresponde a esta competencia`);
+    if (v !== null && !ids.has(v)) throw badRequest("Una de las instancias no pertenece a la puntuación del torneo");
+  }
+  if (requireAll) {
+    const missing = [...keys].filter((k) => !map[k]);
+    if (missing.length) throw badRequest("Asigná una instancia de puntuación a cada posición final", { stageMap: "Incompleto" });
+  }
+}
+
+/** Instancias propuestas para cada pareja (sin guardar), en el formato del motor de puntuación. */
+function proposedTeams(s: Loaded, map: Record<string, number | null>) {
+  const byTeam = new Map(s.final.placements.map((p) => [p.teamId, p]));
+  return (teams: import("@shared/types").Team[]) => teams.map((t) => {
+    const p = byTeam.get(t.id);
+    return p ? { ...t, stageId: map[p.key] ?? null, matchesPlayed: p.matchesPlayed, matchesWon: p.matchesWon } : t;
+  });
+}
+
+/**
+ * Propuesta de posiciones finales → puntos, calculada con el MISMO motor de la acreditación
+ * (buildPreview / computePreview) y comparada con la acreditación vigente si la hay. No guarda nada.
+ */
+fixtureRoutes.post("/:id/fixture/final/preview", async (c) => {
+  const tid = parseId(c.req.param("id"), "El torneo");
+  const body = await parseBody(c, z.object({ stageMap: stageMapSchema.nullable().default(null) }));
+  const db = c.env.DB;
+  const s = await loadState(db, tid);
+  if (!s.final.complete) return c.json({ complete: false, pending: s.final.pending });
+  const keys = [...new Set(s.final.placements.map((p) => p.key))];
+  const defaults = defaultStageMap(keys, s.final.stages);
+  const map = body.stageMap ?? s.final.stageMap ?? defaults.map;
+  for (const k of keys) if (!(k in map)) map[k] = defaults.map[k] ?? null;
+  checkStageMap(s, map, false);
+  const [{ preview, hash }, teams, active] = await Promise.all([buildPreview(db, tid, proposedTeams(s, map)), loadTeams(db, tid), loadActiveCredit(db, tid)]);
+  const stageLabel = (id: number | null) => s.final.stages.find((x) => x.id === id)?.label ?? null;
+  const rows = s.final.placements.map((p) => {
+    const cur = teams.find((t) => t.id === p.teamId);
+    return {
+      teamId: p.teamId, name: s.teams.find((t) => t.id === p.teamId)?.name ?? `Pareja ${p.teamId}`, key: p.key, label: p.label,
+      stageId: map[p.key] ?? null, stageLabel: stageLabel(map[p.key] ?? null), matchesPlayed: p.matchesPlayed, matchesWon: p.matchesWon,
+      before: cur ? { stageId: cur.stageId, stageLabel: stageLabel(cur.stageId), matchesPlayed: cur.matchesPlayed, matchesWon: cur.matchesWon } : null,
+    };
+  });
+  return c.json({
+    complete: true, pending: 0, stageMap: map, review: defaults.review, rows, preview, previewHash: hash,
+    creditedVersion: active?.version ?? null, applied: s.final.applied,
+    diff: active ? diffCredit(await loadCreditedRows(db, active.id), preview.rows) : null,
+  });
+});
+
+/**
+ * Aplica las posiciones finales al torneo: completa la instancia y los partidos de cada pareja
+ * (lo mismo que se cargaba a mano en "Parejas y resultados"). NO acredita: los puntos se confirman
+ * después en Acreditación, con el flujo de siempre (y, si ya había puntos, como corrección con motivo).
+ */
+fixtureRoutes.post("/:id/fixture/final", async (c) => {
+  const tid = parseId(c.req.param("id"), "El torneo");
+  const body = await parseBody(c, z.object({ version, stageMap: stageMapSchema, reason }));
+  const db = c.env.DB;
+  return c.json({ item: await mutate(c, tid, body.version, (s) => {
+    if (!s.final.complete) throw conflict(`La competencia todavía no terminó: faltan ${s.final.pending} partido(s).`);
+    checkStageMap(s, body.stageMap, true);
+    if (s.final.creditedVersion !== null && (!body.reason || body.reason.length < 5)) {
+      throw badRequest("El torneo ya tiene puntos acreditados: indicá el motivo de la corrección", { reason: "Motivo obligatorio" });
+    }
+    const updates = s.final.placements.map((p) => ({ teamId: p.teamId, stageId: body.stageMap[p.key]!, mp: p.matchesPlayed, mw: p.matchesWon }));
+    const now = new Date().toISOString();
+    return {
+      stmts: (guard) => [
+        db.prepare(`UPDATE tournament_fixtures SET stage_map = ? WHERE tournament_id = ? AND ${guard}`).bind(JSON.stringify(body.stageMap), tid),
+        ...updates.map((u) => db.prepare(`UPDATE tournament_teams SET stage_id = ?, matches_played = ?, matches_won = ?, updated_at = ? WHERE id = ? AND tournament_id = ? AND ${guard}`)
+          .bind(u.stageId, u.mp, u.mw, now, u.teamId, tid)),
+        // La competencia terminó: el torneo pasa a "Finalizado" (si todavía no tiene puntos acreditados).
+        db.prepare(`UPDATE tournaments SET status = 'finalizado', updated_at = ? WHERE id = ? AND status IN ('programado', 'en_curso')
+                     AND NOT EXISTS (SELECT 1 FROM tournament_credits WHERE tournament_id = ? AND status = 'vigente') AND ${guard}`).bind(now, tid, tid),
+      ],
+      audit: `aplicó las posiciones finales del fixture a ${updates.length} parejas${s.final.creditedVersion !== null ? ` (corrección: ${body.reason})` : ""}`,
+    };
+  }) });
+});
+
+/**
+ * Qué cambiaría si se guarda este resultado (sin guardarlo): posiciones de grupo, cruces que se
+ * completan solos, conflictos con partidos ya jugados y posiciones finales (y si hay puntos acreditados).
+ */
+fixtureRoutes.post("/:id/fixture/matches/:mid/result-preview", async (c) => {
+  const tid = parseId(c.req.param("id"), "El torneo");
+  const mid = parseId(c.req.param("mid"), "El partido");
+  const body = await parseBody(c, z.object({ status: z.enum(RESULT_STATUSES), sets: setsSchema.default([]), winner: z.union([z.literal(1), z.literal(2)]).nullable().default(null) }));
+  const s = await loadState(c.env.DB, tid);
+  const m = s.matches.find((x) => x.id === mid);
+  if (!m) throw notFound("El partido");
+  const check = checkScore(s.config.match, body.status, body.sets, body.winner);
+  if (!check.ok) throw badRequest(check.error, { sets: check.error });
+  const name = (id: number | null) => (id === null ? "un lugar vacío" : s.teams.find((t) => t.id === id)?.name ?? `#${id}`);
+  const after = s.matches.map((x) => (x.id === mid ? { ...x, status: body.status, winner: check.winner, sets: check.sets } : x));
+  const afterStandings = new Map(s.groups.map((g) => [g.id, groupStanding(s.config, g, after, s.teams)]));
+  const standings = s.groups.flatMap((g) => {
+    const before = s.raw.standings.get(g.id)!.rows;
+    const now = afterStandings.get(g.id)!.rows;
+    return now.filter((r) => before.find((b) => b.teamId === r.teamId)?.position !== r.position)
+      .map((r) => ({ group: g.name, team: name(r.teamId), before: before.find((b) => b.teamId === r.teamId)?.position ?? null, after: r.position }));
+  });
+  const sync = syncBrackets(after, afterStandings, name);
+  const oldConflicts = new Set(s.conflicts.map((x) => `${x.matchId}:${x.side}`));
+  const bracket = sync.updates.filter((u) => {
+    const cur = s.matches.find((x) => x.id === u.matchId)!;
+    return cur.team1Id !== u.team1Id || cur.team2Id !== u.team2Id;
+  }).map((u) => {
+    const cur = s.matches.find((x) => x.id === u.matchId)!;
+    return { matchId: u.matchId, phase: cur.phase, round: cur.round, before: [name(cur.team1Id), name(cur.team2Id)], after: [name(u.team1Id), name(u.team2Id)] };
+  });
+  // Posiciones finales: con los cruces ya completados como quedarían.
+  const applied = after.map((x) => {
+    const u = sync.updates.find((y) => y.matchId === x.id);
+    return u ? { ...x, team1Id: u.team1Id, team2Id: u.team2Id, status: u.status, winner: u.winner } : x;
+  });
+  const beforeFinal = new Map(s.final.placements.map((p) => [p.teamId, p.label]));
+  const afterFinal = fixtureComplete(applied).complete ? finalPlacements(s.teams, applied) : [];
+  const finalChanges = s.final.complete
+    ? s.final.placements.map((p) => ({ team: name(p.teamId), before: p.label, after: afterFinal.find((a) => a.teamId === p.teamId)?.label ?? "Competencia sin terminar" }))
+      .filter((x) => x.before !== x.after)
+    : afterFinal.filter((a) => beforeFinal.get(a.teamId) !== a.label).map((a) => ({ team: name(a.teamId), before: null, after: a.label }));
+  return c.json({
+    winner: check.winner, standings, bracket,
+    conflicts: sync.conflicts.filter((x) => !oldConflicts.has(`${x.matchId}:${x.side}`)).map((x) => x.message),
+    finalChanges, creditedVersion: s.final.creditedVersion,
+  });
+});
+
+/**
+ * Para la acreditación: si el torneo tiene fixture, sólo se acredita con la competencia terminada y sus
+ * posiciones finales aplicadas (así nunca se acreditan datos viejos ni a medio cargar).
+ */
+export async function fixtureCreditBlock(db: D1Database, tid: number): Promise<string | null> {
+  const has = await db.prepare("SELECT EXISTS (SELECT 1 FROM fixture_matches WHERE tournament_id = ?) AS has").bind(tid).first<{ has: number }>();
+  if (has?.has !== 1) return null;
+  const s = await loadState(db, tid);
+  if (!s.final.complete) return `El fixture todavía no terminó (faltan ${s.final.pending} partido(s)). Los puntos se acreditan al finalizar la competencia.`;
+  if (!s.final.applied) return "Las posiciones finales del fixture cambiaron o todavía no se aplicaron: revisalas en Fixture → Puntos y aplicalas antes de acreditar.";
+  return null;
+}

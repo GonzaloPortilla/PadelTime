@@ -275,6 +275,21 @@ Detalle en [`docs/FIXTURES.md`](FIXTURES.md). Resumen técnico:
   - `groupByEvent` (worker/public/site-data.ts) agrupa las competencias para los listados (inicio, torneos, calendario, premios), con estado derivado (`eventStatus`) y enlace a la categoría de mayor nivel;
   - la página `/torneos/<slug>-<id>` sigue siendo por competencia y muestra el selector de categorías del torneo.
 
+## 2 decies. Del fixture a la puntuación (Fase 10)
+
+- **Migración 0009:** `tournament_fixtures.stage_map`, la equivalencia entre la posición final y `tournament_stages`.
+- **Motor (`shared/fixture.ts`):**
+  - `fixtureComplete` y `finalPlacements`: posición final por pareja (`oro:1`, `oro:2`, `oro:4`…, `plata:…`, `cuadro:…`, `grupos`), con partidos jugados y ganados (sin W.O. ni BYE);
+  - `defaultStageMap`: propuesta por nombre de instancia, con la Plata marcada para revisar.
+- **API (`worker/routes/fixtures.ts`):**
+  - `POST /fixture/final/preview`: llama a `buildPreview(db, id, override)`, el motor existente con las instancias propuestas sin guardarlas, y a `diffCredit` contra la acreditación vigente;
+  - `POST /fixture/final`: escribe `stage_id`, `matches_played` y `matches_won` en `tournament_teams` (con motivo si ya hay puntos) y pasa el torneo a finalizado;
+  - `POST /fixture/matches/:id/result-preview`: simulación de una corrección (posiciones, cruces, conflictos, posiciones finales).
+- **Resguardos:**
+  - `fixtureLockReason` bloquea la carga manual y la importación de cuadro en torneos con fixture;
+  - `fixtureCreditBlock` agrega un error a la previsualización y rechaza la confirmación si el fixture no terminó o no está aplicado.
+- **Sin cambios** en `shared/scoring.ts` ni en la lógica de acreditación, corrección y reversión. En `worker/routes/credits.ts` sólo se agregó el resguardo `fixtureCreditBlock`. El fixture le entrega al motor las mismas entradas que la carga manual.
+
 ## 3. API
 
 Todas las respuestas son JSON. Los errores tienen la forma `{ error: { code, message, fields? } }`, con los mensajes en español.

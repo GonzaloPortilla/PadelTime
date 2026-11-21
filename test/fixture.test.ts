@@ -301,3 +301,36 @@ describe("configuración y vista pública", () => {
     expect(JSON.stringify(pub)).not.toContain("teamId");
   });
 });
+
+describe("posiciones finales → puntuación (Fase 10)", () => {
+  const P = (id: number): SlotSource => ({ kind: "pareja", teamId: id });
+  it("determina campeón, finalista y eliminados por ronda; W.O. y BYE no cuentan como jugados", async () => {
+    const { finalPlacements, fixtureComplete } = await import("@shared/fixture");
+    const ms = bracketSkeleton("oro", [[P(1), { kind: "bye" }], [P(2), P(3)]]).map((m, i) => ({ ...m, id: 500 + i }));
+    Object.assign(ms[0]!, { team1Id: 1, status: "bye", winner: 1 });
+    Object.assign(ms[1]!, { team1Id: 2, team2Id: 3, status: "wo", winner: 1 });
+    expect(fixtureComplete(ms).complete).toBe(false);
+    Object.assign(ms[2]!, { team1Id: 1, team2Id: 2, status: "jugado", winner: 2, sets: L });
+    const groupMatch = gmatch(1, 1, 3, W);
+    const all = [groupMatch, ...ms];
+    expect(fixtureComplete(all).complete).toBe(true);
+    const fp = finalPlacements([team(1), team(2), team(3), team(4)], all);
+    expect(fp.map((p) => [p.teamId, p.key, p.label])).toEqual([
+      [2, "oro:1", "Campeón · Copa de Oro"], [1, "oro:2", "Finalista · Copa de Oro"], [3, "oro:4", "Semifinal · Copa de Oro"], [4, "grupos", "Fase de grupos"],
+    ]);
+    expect(fp.find((p) => p.teamId === 1)).toMatchObject({ matchesPlayed: 2, matchesWon: 1 }); // grupo + final (el BYE no cuenta)
+    expect(fp.find((p) => p.teamId === 2)).toMatchObject({ matchesPlayed: 1, matchesWon: 1 }); // el W.O. no cuenta
+  });
+
+  it("propone la equivalencia por nombre de instancia y marca la Copa de Plata para revisar", async () => {
+    const { defaultStageMap } = await import("@shared/fixture");
+    const stages = [
+      { id: 1, label: "Campeón", rank: 1, points: 100, maxTeams: 1 }, { id: 2, label: "Finalista", rank: 2, points: 70, maxTeams: 1 },
+      { id: 3, label: "Semifinal", rank: 3, points: 50, maxTeams: 2 }, { id: 4, label: "Cuartos de final", rank: 4, points: 30, maxTeams: 4 },
+      { id: 7, label: "Fase de grupos", rank: 7, points: 5, maxTeams: null },
+    ];
+    const { map, review } = defaultStageMap(["oro:1", "oro:2", "oro:4", "oro:8", "plata:1", "grupos", "cuadro:16"], stages);
+    expect(map).toEqual({ "oro:1": 1, "oro:2": 2, "oro:4": 3, "oro:8": 4, "plata:1": 7, grupos: 7, "cuadro:16": null });
+    expect(review).toEqual(["plata:1"]);
+  });
+});
