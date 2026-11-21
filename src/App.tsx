@@ -8,6 +8,7 @@ import { PlayersPage } from "@/pages/PlayersPage";
 import { CategoriesPage } from "@/pages/CategoriesPage";
 import { SeasonsPage } from "@/pages/SeasonsPage";
 import { TournamentsPage } from "@/pages/TournamentsPage";
+import { TournamentEventsPage } from "@/pages/EventsPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 
@@ -64,6 +65,7 @@ export function App() {
         <Route path="jugadores" element={<PlayersPage />} />
         <Route path="jugadores/:id" element={<PlayerDetailPage />} />
         <Route path="torneos" element={<TournamentsPage />} />
+        <Route path="eventos" element={<TournamentEventsPage />} />
         <Route path="torneos/:id" element={<TournamentPage />} />
         <Route path="rankings" element={<RankingsPage />} />
         <Route path="importar-rankings" element={<RankingImportPage />} />

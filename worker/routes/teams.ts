@@ -7,6 +7,21 @@ import { parseBody, parseId } from "../lib/validate";
 import { auditStmt } from "../lib/audit";
 import { loadScoring, loadTeams, loadTournamentCtx, lockReason, type TournamentCtx } from "../lib/scoring-data";
 
+/** Fase 9: una pareja que ya está en el fixture queda fija (no se cambian sus jugadores ni se borra). */
+async function inFixture(db: D1Database, teamId: number): Promise<boolean> {
+  const r = await db.prepare(
+    `SELECT EXISTS (SELECT 1 FROM fixture_group_teams WHERE team_id = ?1)
+         OR EXISTS (SELECT 1 FROM fixture_matches WHERE team1_id = ?1 OR team2_id = ?1) AS used`,
+  ).bind(teamId).first<{ used: number }>();
+  return r?.used === 1;
+}
+
+/** Cupo de parejas configurado en el fixture (null = sin límite). */
+async function teamCap(db: D1Database, tournamentId: number): Promise<number | null> {
+  const r = await db.prepare("SELECT json_extract(config, '$.maxTeams') AS cap FROM tournament_fixtures WHERE tournament_id = ?").bind(tournamentId).first<{ cap: number | null }>();
+  return r?.cap ?? null;
+}
+
 async function assertEditable(db: D1Database, tournamentId: number): Promise<TournamentCtx> {
   const t = await loadTournamentCtx(db, tournamentId);
   const locked = lockReason(t);
@@ -52,6 +67,11 @@ tournamentTeamRoutes.post("/:id/teams", async (c) => {
   const db = c.env.DB;
   const t = await assertEditable(db, id);
   const players = await assertPlayers(db, t, [input.player1Id, input.player2Id]);
+  const cap = await teamCap(db, id);
+  if (cap !== null) {
+    const n = await db.prepare("SELECT COUNT(*) AS n FROM tournament_teams WHERE tournament_id = ?").bind(id).first<{ n: number }>();
+    if ((n?.n ?? 0) >= cap) throw conflict(`Se alcanzó el cupo de ${cap} parejas configurado en el fixture`);
+  }
   const names = players.map((p) => p.last_name).join(" / ");
   const teamExpr = "(SELECT MAX(id) FROM tournament_teams WHERE tournament_id = ?1)";
   await db.batch([
@@ -109,6 +129,11 @@ teamRoutes.put("/:id", async (c) => {
   const tournamentId = await teamTournament(db, teamId);
   const t = await assertEditable(db, tournamentId);
   const players = await assertPlayers(db, t, [input.player1Id, input.player2Id]);
+  if (await inFixture(db, teamId)) {
+    const current = await db.prepare("SELECT player_id FROM tournament_team_players WHERE team_id = ? ORDER BY player_id").bind(teamId).all<{ player_id: number }>();
+    const same = current.results.map((r) => r.player_id).join(",") === [input.player1Id, input.player2Id].sort((a, b) => a - b).join(",");
+    if (!same) throw conflict("La pareja ya está en el fixture: sus jugadores quedan fijos durante la competencia. Si no puede seguir, registrá su retiro.");
+  }
   await db.batch([
     db.prepare("UPDATE tournament_teams SET seed = ?, updated_at = ? WHERE id = ?").bind(input.seed, new Date().toISOString(), teamId),
     db.prepare("DELETE FROM tournament_team_players WHERE team_id = ?").bind(teamId),
@@ -123,6 +148,7 @@ teamRoutes.delete("/:id", async (c) => {
   const db = c.env.DB;
   const tournamentId = await teamTournament(db, teamId);
   const t = await assertEditable(db, tournamentId);
+  if (await inFixture(db, teamId)) throw conflict("La pareja ya está en el fixture (grupos o partidos). Registrá su retiro desde la pestaña Fixture.");
   await db.batch([
     db.prepare("DELETE FROM tournament_teams WHERE id = ?").bind(teamId),
     auditStmt(db, c.get("user").id, "eliminar", "pareja", tournamentId, `${t.name}: quitó una pareja`),

@@ -137,6 +137,9 @@ export interface Tournament {
   series: import("./site").Series | null;
   publicDescription: string | null;
   prizeInfo: string | null;
+  /** Evento general al que pertenece esta categoría (Fase 9). */
+  eventId: number | null;
+  eventName: string | null;
 }
 
 export interface ActivityItem {
@@ -203,6 +206,9 @@ export interface Team {
   stageId: number | null;
   matchesPlayed: number;
   matchesWon: number;
+  /** Retiro después de empezada la competencia (Fase 9). */
+  withdrawnAt?: string | null;
+  withdrawnReason?: string | null;
   players: TeamPlayer[];
 }
 
@@ -427,4 +433,20 @@ export interface PublicationOverview {
   seasons: { id: number; name: string; year: number; status: SeasonStatus; publicVisible: boolean }[];
   links: PublicationLink[];
   version: number;
+}
+
+/** Evento general con varias categorías (Fase 9). Cada categoría es un torneo largo. */
+export interface TournamentEvent {
+  id: number;
+  seasonId: number;
+  seasonName: string;
+  seasonStatus: SeasonStatus;
+  name: string;
+  series: import("./site").Series | null;
+  startDate: string;
+  endDate: string;
+  venue: string | null;
+  notes: string | null;
+  createdAt: string;
+  tournaments: Tournament[];
 }

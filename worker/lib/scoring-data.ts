@@ -66,7 +66,7 @@ export async function loadScoring(db: D1Database, tournamentId: number): Promise
 export async function loadTeams(db: D1Database, tournamentId: number): Promise<Team[]> {
   const { results } = await db
     .prepare(
-      `SELECT tt.id, tt.seed, tt.stage_id, tt.matches_played, tt.matches_won,
+      `SELECT tt.id, tt.seed, tt.stage_id, tt.matches_played, tt.matches_won, tt.withdrawn_at, tt.withdrawn_reason,
               p.id AS pid, p.code, p.first_name, p.last_name, p.gender, p.main_category_id, c.name AS category_name, p.active
          FROM tournament_teams tt
          LEFT JOIN tournament_team_players ttp ON ttp.team_id = tt.id
@@ -77,14 +77,14 @@ export async function loadTeams(db: D1Database, tournamentId: number): Promise<T
     )
     .bind(tournamentId)
     .all<{
-      id: number; seed: number | null; stage_id: number | null; matches_played: number; matches_won: number;
+      id: number; seed: number | null; stage_id: number | null; matches_played: number; matches_won: number; withdrawn_at: string | null; withdrawn_reason: string | null;
       pid: number | null; code: string; first_name: string; last_name: string; gender: Gender; main_category_id: number; category_name: string; active: number;
     }>();
   const teams = new Map<number, Team>();
   for (const r of results) {
     let team = teams.get(r.id);
     if (!team) {
-      team = { id: r.id, seed: r.seed, stageId: r.stage_id, matchesPlayed: r.matches_played, matchesWon: r.matches_won, players: [] };
+      team = { id: r.id, seed: r.seed, stageId: r.stage_id, matchesPlayed: r.matches_played, matchesWon: r.matches_won, withdrawnAt: r.withdrawn_at, withdrawnReason: r.withdrawn_reason, players: [] };
       teams.set(r.id, team);
     }
     if (r.pid !== null) {

@@ -184,7 +184,7 @@ Excel/CSV ─► lectura en el navegador (src/rankingImport/parse) ─► mapeo 
 
 - **Categoría acreditada:** `buildPreview` toma, para cada jugador que ya recibió puntos en la acreditación vigente, la categoría de ese movimiento y no la principal actual. Una corrección nunca muda puntos históricos de ranking. Si cambió, se muestra el aviso `categoria_acreditada`.
 - **Historial protegido:** no se borran temporadas, categorías ni divisiones con `point_movements` o `initial_balances`. No se cambia la rama de un jugador con parejas o movimientos. Reabrir una temporada cerrada exige rol admin.
-- **Respaldo (`/api/backup`, sólo admin):** `POST /start` devuelve conteos y registra la descarga en la auditoría. `GET /:tabla?after=<rowid>` devuelve páginas de 1000 filas de una lista fija de 20 tablas (`shared/backup.ts`). El navegador arma el `.sql` (`dumpHeader` + `dumpPage`, una sentencia por línea, saltos de línea codificados con `char(10)`), para no exceder los 10 ms de CPU por solicitud.
+- **Respaldo (`/api/backup`, sólo admin):** `POST /start` devuelve conteos y registra la descarga en la auditoría. `GET /:tabla?after=<rowid>` devuelve páginas de 1000 filas de una lista fija de tablas (`shared/backup.ts`). El navegador arma el `.sql` (`dumpHeader` + `dumpPage`, una sentencia por línea, saltos de línea codificados con `char(10)`), para no exceder los 10 ms de CPU por solicitud.
 - **Restauración:** sobre una base nueva con migraciones. El encabezado vacía las tablas sembradas por migraciones (plantillas y configuración).
 - **Cron diario** (`scheduled` en `worker/index.ts`, `worker/lib/maintenance.ts`): borra sesiones vencidas e intentos de ingreso de más de 24 h.
 - **Tamaño de solicitudes:** 64 KB en general; 2 MB para la importación de rankings (`IMPORT_MAX_BODY_BYTES`).
@@ -233,6 +233,28 @@ Detalle en [`docs/CMS.md`](CMS.md). Resumen técnico:
 - **Concurrencia:** `UPDATE … WHERE version = ?`. El historial y la auditoría se condicionan con `changes() > 0`.
 - **Render:** `worker/public/views.ts` arma cada página a partir de su contenido. Lo usan las rutas públicas y `preview.ts`, así la vista previa es idéntica a la web.
 - **Almacenamiento:** binding KV `MEDIA` detrás de la interfaz `MediaStore` (cambiable a R2).
+
+## 2 octies. Fixtures de torneos largos (Fase 9)
+
+Detalle en [`docs/FIXTURES.md`](FIXTURES.md). Resumen técnico:
+
+- **Migración 0007:**
+  - `tournament_events` y `tournaments.event_id`: un evento agrupa torneos, uno por categoría;
+  - `tournament_teams.withdrawn_*`;
+  - `tournament_fixtures` (configuración JSON, `version`, `op_token`), `fixture_groups`, `fixture_group_teams`, `fixture_matches`, `fixture_match_history` y `fixture_publications`.
+- **Motor puro (`shared/fixture.ts`):**
+  - `checkScore`, `roundRobin` (círculo), `distributeGroups` (serpentina);
+  - `groupStanding` (desempates configurables, mini-liga entre empatadas, orden manual);
+  - `seedFromGroups` / `placeEntries` (siembra estándar, evita cruces del mismo grupo, BYE);
+  - `syncBrackets`: avances automáticos sólo en partidos sin resultado y conflictos en los ya jugados;
+  - `fixtureIssues` y `buildPublicFixture`.
+- **Escrituras (`worker/routes/fixtures.ts`):** cada operación lee el estado, valida y escribe un lote. El primer `UPDATE` incrementa la versión del fixture sólo si no cambió y marca un `op_token`. Las demás sentencias llevan `EXISTS (… op_token = ?)`: si otro escribió en el medio, el lote no aplica nada.
+- **Publicación:** se guarda una copia (`PublicFixture`) en `fixture_publications`, y un trigger invalida la caché pública. La web nunca lee el fixture en edición.
+- **Restricciones:**
+  - sólo `type = 'largo'` (409 para americanos);
+  - una pareja en el fixture no cambia de jugadores ni se borra;
+  - cupo opcional en el alta de parejas;
+  - anular resultados es sólo para administradores.
 
 ## 3. API
 
@@ -285,7 +307,7 @@ Para compensar el menor número de iteraciones: bloqueo tras 5 fallos, contrase�
 
 - `npm test`: **172 tests**. Fase 5B suma 18:
   - 12 de integridad de puntuaciones (`test/integrity.test.ts`): mismos puntos por integrante, categoría principal y división, regla general frente a acumulativo, cambios de plantilla después de acreditar, triple confirmación concurrente, dos organizadores corrigiendo a la vez, cada corrección contraasentada exactamente una vez, reversión sin borrar historial, categoría acreditada fija ante un cambio de categoría, rankings sólo desde movimientos confirmados (también en la vista pública), temporada cerrada intacta y reapertura sólo por admin, historial protegido.
-  - 5 de respaldo (`test/backup.test.ts`): permisos, restauración completa en una segunda base D1 con comparación fila por fila de las 20 tablas, paginación sin pérdidas, escape de texto y limpieza diaria.
+  - 5 de respaldo (`test/backup.test.ts`): permisos, restauración completa en una segunda base D1 con comparación fila por fila de todas las tablas, paginación sin pérdidas, escape de texto y limpieza diaria.
   - 1 de importación de 1500 filas (más de 64 KB).
 
   Fase 4: 151 en total hasta esa fase:

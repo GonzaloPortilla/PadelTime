@@ -6,8 +6,9 @@ await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 
 // Orden compatible con las claves foráneas.
 const TABLES = [
+  "fixture_publications", "fixture_match_history", "fixture_matches", "fixture_group_teams", "fixture_groups", "tournament_fixtures",
   "initial_balances", "point_movements", "ranking_imports", "tournament_credits", "tournament_team_players", "tournament_teams",
-  "tournament_stages", "tournament_scoring", "bracket_imports", "tournaments", "player_category_changes", "players",
+  "tournament_stages", "tournament_scoring", "bracket_imports", "tournaments", "tournament_events", "player_category_changes", "players",
   "divisions", "categories", "seasons", "audit_log", "sessions", "login_attempts", "users",
 ];
 

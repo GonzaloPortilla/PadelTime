@@ -21,6 +21,8 @@ import { backupRoutes } from "./routes/backup";
 import { siteRoutes } from "./routes/site";
 import { cmsRoutes } from "./routes/cms";
 import { mediaRoutes } from "./routes/media";
+import { fixtureRoutes } from "./routes/fixtures";
+import { eventRoutes } from "./routes/events";
 
 export const app = new Hono<AppEnv>().basePath("/api");
 
@@ -75,7 +77,9 @@ app.route("/tournaments", tournamentScoringRoutes);
 app.route("/tournaments", tournamentTeamRoutes);
 app.route("/tournaments", creditRoutes);
 app.route("/tournaments", importRoutes);
+app.route("/tournaments", fixtureRoutes);
 app.route("/tournaments", tournamentRoutes);
+app.route("/events", eventRoutes);
 app.route("/teams", teamRoutes);
 app.route("/scoring-templates", templateRoutes);
 app.route("/rankings", rankingRoutes);

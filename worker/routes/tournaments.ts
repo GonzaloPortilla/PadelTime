@@ -41,12 +41,15 @@ interface Row {
   series: Tournament["series"];
   public_description: string | null;
   prize_info: string | null;
+  event_id: number | null;
+  event_name: string | null;
 }
 
 export const TOURNAMENT_SELECT = `
   SELECT t.id, t.season_id, s.name AS season_name, s.status AS season_status, t.name, t.type, t.category_id,
          c.name AS category_name, c.gender, t.division_id, d.name AS division_name, t.start_date, t.end_date,
          t.status, t.venue, t.notes, t.public_visible, t.featured, t.registration_open, t.series, t.public_description, t.prize_info,
+         t.event_id, (SELECT e.name FROM tournament_events e WHERE e.id = t.event_id) AS event_name,
          (SELECT COUNT(*) FROM tournament_teams tt WHERE tt.tournament_id = t.id) AS team_count,
          (SELECT cr.version FROM tournament_credits cr WHERE cr.tournament_id = t.id AND cr.status = 'vigente') AS credited_version
     FROM tournaments t
@@ -79,6 +82,8 @@ export const mapTournament = (r: Row): Tournament => ({
   series: r.series,
   publicDescription: r.public_description,
   prizeInfo: r.prize_info,
+  eventId: r.event_id,
+  eventName: r.event_name,
 });
 
 async function getTournament(db: D1Database, id: number): Promise<Tournament> {
@@ -107,6 +112,11 @@ async function validateRelations(db: D1Database, t: TournamentData, current?: To
     });
   }
   if (!category) throw badRequest("La categoría no existe", { categoryId: "Categoría inexistente" });
+  if (t.eventId) {
+    const ev = await db.prepare("SELECT season_id FROM tournament_events WHERE id = ?").bind(t.eventId).first<{ season_id: number }>();
+    if (!ev) throw badRequest("El evento no existe", { eventId: "Evento inexistente" });
+    if (ev.season_id !== t.seasonId) throw badRequest("El evento es de otra temporada", { eventId: "Otra temporada" });
+  }
   const categoryChanged = !current || current.categoryId !== t.categoryId;
   if (categoryChanged && category.active !== 1) throw badRequest("La categoría está inactiva", { categoryId: "Categoría inactiva" });
   if (current && categoryChanged && current.teamCount > 0) {
@@ -157,20 +167,21 @@ tournamentRoutes.get("/:id", async (c) => {
   return c.json({ item: await getTournament(c.env.DB, parseId(c.req.param("id"), "El torneo")) });
 });
 
-tournamentRoutes.post("/", async (c) => {
-  const input = await parseBody(c, tournamentSchema);
-  const db = c.env.DB;
-  await validateRelations(db, input);
-  const [res] = await db.batch<{ id: number }>([
+/**
+ * Sentencias para crear un torneo con la puntuación predeterminada de su tipo. Usan MAX(id): dentro de
+ * un mismo lote se pueden encadenar varias (un evento con varias categorías).
+ */
+export function insertTournamentStmts(db: D1Database, input: TournamentData, userId: number): D1PreparedStatement[] {
+  return [
     db
       .prepare(
         `INSERT INTO tournaments (season_id, name, type, category_id, division_id, start_date, end_date, venue, notes, created_by,
-                                  public_visible, featured, registration_open, series, public_description, prize_info)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+                                  public_visible, featured, registration_open, series, public_description, prize_info, event_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       )
       .bind(input.seasonId, input.name, input.type, input.categoryId, input.divisionId, input.startDate, input.endDate,
-        input.venue, input.notes, c.get("user").id, input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0,
-        input.series, input.publicDescription, input.prizeInfo),
+        input.venue, input.notes, userId, input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0,
+        input.series, input.publicDescription, input.prizeInfo, input.eventId ?? null),
     // Se copia la plantilla predeterminada del tipo de torneo (queda editable para este torneo).
     db
       .prepare(
@@ -178,7 +189,7 @@ tournamentRoutes.post("/", async (c) => {
          SELECT (SELECT MAX(id) FROM tournaments), id, name, cumulative, participation_bonus, match_played_bonus, match_won_bonus, ?
            FROM scoring_templates WHERE default_for_type = ? AND active = 1`,
       )
-      .bind(c.get("user").id, input.type),
+      .bind(userId, input.type),
     db
       .prepare(
         `INSERT INTO tournament_stages (tournament_id, label, rank, points, max_teams)
@@ -189,8 +200,17 @@ tournamentRoutes.post("/", async (c) => {
       .bind(input.type),
     db
       .prepare("INSERT INTO audit_log (user_id, action, entity, entity_id, summary) VALUES (?, 'crear', 'torneo', (SELECT MAX(id) FROM tournaments), ?)")
-      .bind(c.get("user").id, `Creó el torneo ${input.name}`),
-  ]);
+      .bind(userId, `Creó el torneo ${input.name}`),
+  ];
+}
+
+export { validateRelations };
+
+tournamentRoutes.post("/", async (c) => {
+  const input = await parseBody(c, tournamentSchema);
+  const db = c.env.DB;
+  await validateRelations(db, input);
+  const [res] = await db.batch<{ id: number }>(insertTournamentStmts(db, input, c.get("user").id));
   return c.json({ item: await getTournament(db, res!.results[0]!.id) }, 201);
 });
 
@@ -209,11 +229,11 @@ tournamentRoutes.put("/:id", async (c) => {
       .prepare(
         `UPDATE tournaments SET season_id = ?, name = ?, type = ?, category_id = ?, division_id = ?, start_date = ?, end_date = ?,
                 venue = ?, notes = ?, public_visible = ?, featured = ?, registration_open = ?, series = ?, public_description = ?,
-                prize_info = ?, updated_at = ? WHERE id = ?`,
+                prize_info = ?, event_id = ?, updated_at = ? WHERE id = ?`,
       )
       .bind(input.seasonId, input.name, input.type, input.categoryId, input.divisionId, input.startDate, input.endDate,
         input.venue, input.notes, input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0, input.series,
-        input.publicDescription, input.prizeInfo, new Date().toISOString(), id),
+        input.publicDescription, input.prizeInfo, input.eventId ?? null, new Date().toISOString(), id),
     auditStmt(db, c.get("user").id, "editar", "torneo", id, `Editó el torneo ${input.name}`),
   ]);
   return c.json({ item: await getTournament(db, id) });

@@ -19,10 +19,12 @@ import { TeamsTab } from "./TeamsTab";
 import { ScoringTab } from "./ScoringTab";
 import { CreditTab } from "./CreditTab";
 import { ImportTab } from "./import/ImportTab";
+import { FixtureTab } from "./fixture/FixtureTab";
 
 const TABS = [
   { key: "resumen", label: "Resumen" },
   { key: "parejas", label: "Parejas y resultados" },
+  { key: "fixture", label: "Fixture" },
   { key: "importar", label: "Importar cuadro" },
   { key: "puntuacion", label: "Puntuación" },
   { key: "acreditacion", label: "Acreditación" },
@@ -159,6 +161,7 @@ export function TournamentPage() {
           <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-navy sm:text-3xl">{t.name}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <span>{t.seasonName}</span>·<span>{formatRange(t.startDate, t.endDate)}</span>
+            {t.eventName && <Link to="/eventos" className="font-medium text-brand-700 hover:underline">{t.eventName}</Link>}
             <TournamentTypeBadge type={t.type} />
             <GenderBadge gender={t.gender} />
             <TournamentStatusBadge status={t.status} />
@@ -172,7 +175,7 @@ export function TournamentPage() {
 
       <div className="-mx-4 mb-5 overflow-x-auto border-b border-slate-200 px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Secciones del torneo">
         <div className="flex gap-1">
-          {TABS.map((x) => (
+          {TABS.filter((x) => x.key !== "fixture" || t.type === "largo").map((x) => (
             <button key={x.key} type="button" role="tab" aria-selected={tab === x.key} onClick={() => setTab(x.key)}
               className={cn("whitespace-nowrap border-b-[3px] px-3 py-2.5 font-brand text-[13px] font-bold transition-colors",
                 tab === x.key ? "border-ball-400 text-brand-700" : "border-transparent text-slate-500 hover:text-brand-700")}>
@@ -184,6 +187,7 @@ export function TournamentPage() {
 
       {tab === "resumen" && <Summary t={t} onTab={setTab} />}
       {tab === "parejas" && <TeamsTab tournament={t} onGoToScoring={() => setTab("puntuacion")} />}
+      {tab === "fixture" && t.type === "largo" && <FixtureTab tournament={t} />}
       {tab === "importar" && <ImportTab tournament={t} onDone={() => setTab("acreditacion")} onManualLoad={() => setTab("parejas")} />}
       {tab === "puntuacion" && <ScoringTab tournament={t} />}
       {tab === "acreditacion" && <CreditTab tournament={t} />}

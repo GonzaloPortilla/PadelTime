@@ -108,7 +108,7 @@ Por ejemplo, si se perdió la cuenta de Cloudflare o pasaron más de 7 días. El
 
 Esto se probó de punta a punta:
 
-- La prueba automática `test/backup.test.ts` restaura un respaldo en una base nueva y verifica que las 20 tablas queden idénticas, fila por fila, que los rankings coincidan y que los movimientos sigan siendo inmutables.
+- La prueba automática `test/backup.test.ts` restaura un respaldo en una base nueva y verifica que todas las tablas queden idénticas, fila por fila, que los rankings coincidan y que los movimientos sigan siendo inmutables.
 - La prueba de navegador `e2e/phase5.spec.ts` descarga el respaldo desde la pantalla y lo restaura con estos mismos comandos de `wrangler` (en modo local).
 
 Para el **respaldo de terminal** (`wrangler d1 export`), el paso 3 se saltea: el archivo ya trae el esquema. Se ejecuta directamente sobre la base nueva.

@@ -20,7 +20,7 @@ import {
   TOURNAMENT_TABS, tournamentsPage, type RenderOpts, type TournamentTab,
 } from "./site-pages";
 
-export const RENDER_VERSION = "f8.1";
+export const RENDER_VERSION = "f9.1";
 
 export function makeCtx(settings: PublicSettings, url: URL, opts: { embed?: boolean; preview?: boolean } = {}): PageCtx {
   const embed = !!opts.embed;

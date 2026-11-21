@@ -7,7 +7,7 @@ import type { Tournament } from "@shared/types";
 import { SERIES, SERIES_LABEL, tournamentPath, type Series } from "@shared/site";
 import { api } from "@/lib/api";
 import { useForm } from "@/lib/useForm";
-import { keys, useActiveGenders, useCategories, useSeasons } from "@/hooks/data";
+import { keys, useActiveGenders, useCategories, useEvents, useSeasons } from "@/hooks/data";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, FormError, SelectField, TextAreaField, TextField } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -39,6 +39,7 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
     series: (tournament?.series ?? "") as Series | "",
     publicDescription: tournament?.publicDescription ?? "",
     prizeInfo: tournament?.prizeInfo ?? "",
+    eventId: String(tournament?.eventId ?? ""),
   });
   const v = form.values;
   // Si las temporadas cargan después de abrir el formulario, se preselecciona la activa.
@@ -48,6 +49,7 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
   }, [v.seasonId, defaultSeason, set]);
 
   const season = openSeasons.find((s) => String(s.id) === v.seasonId);
+  const events = useEvents(v.seasonId || null);
   const selectableCategories = useMemo(
     // Sólo categorías activas de ramas activas (Damas está discontinuada); al editar se conserva la del torneo.
     () => (categories.data ?? []).filter((c) => (c.active && activeGenders.includes(c.gender)) || c.id === tournament?.categoryId),
@@ -64,6 +66,7 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
       void qc.invalidateQueries({ queryKey: keys.dashboard });
       void qc.invalidateQueries({ queryKey: keys.seasons });
       void qc.invalidateQueries({ queryKey: keys.categories });
+      void qc.invalidateQueries({ queryKey: keys.events });
       toast(tournament ? "Torneo actualizado" : "Torneo creado");
       // Primero se cierra (puede tocar la URL del listado) y después se notifica:
       // así una navegación hecha en onSaved no queda pisada por el cierre.
@@ -108,7 +111,7 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
             <span className="mb-1 block text-sm font-medium text-slate-700">Tipo<span className="ml-0.5 text-red-500">*</span></span>
             <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Tipo de torneo">
               {(["largo", "americano"] as const).map((t) => (
-                <button key={t} type="button" role="radio" aria-checked={v.type === t} onClick={() => form.set("type", t)}
+                <button key={t} type="button" role="radio" aria-checked={v.type === t} onClick={() => { form.set("type", t); if (t === "americano") form.set("eventId", ""); }}
                   className={cn("rounded-lg px-3 py-2 text-left ring-1 ring-inset transition-colors",
                     v.type === t ? "bg-brand-50 ring-brand-600" : "bg-white ring-slate-300 hover:bg-slate-50")}>
                   <span className="block text-sm font-medium text-slate-900">{TOURNAMENT_TYPE_LABEL[t]}</span>
@@ -161,6 +164,13 @@ export function TournamentForm({ tournament, onClose, onSaved }: { tournament: T
                 value={v.endDate} onChange={(e) => form.set("endDate", e.target.value)} error={form.errors.endDate} hint="Si no la sabés, dejala vacía." />
             )}
           </div>
+          {v.type === "largo" && (events.data ?? []).length > 0 && (
+            <SelectField label="Evento" value={v.eventId} onChange={(e) => form.set("eventId", e.target.value)} error={form.errors.eventId}
+              hint="Opcional. Agrupa varias categorías de un mismo torneo (por ejemplo, Qatar Major 2000: C5, C6 y C7).">
+              <option value="">Sin evento</option>
+              {(events.data ?? []).map((ev) => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+            </SelectField>
+          )}
           <TextField label="Sede" placeholder="Club o complejo" value={v.venue} onChange={(e) => form.set("venue", e.target.value)} error={form.errors.venue} />
           <TextAreaField label="Notas internas" value={v.notes} onChange={(e) => form.set("notes", e.target.value)} error={form.errors.notes} hint="No se muestran en la web." />
 

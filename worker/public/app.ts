@@ -8,7 +8,7 @@ import { loadPublicSettings, publicVersion, type PublicSettings } from "../lib/s
 import { loadPlayer, loadRanking, rankingRefs, resolveSeason, searchPlayers, visibleSeasons } from "./data";
 import type { PageCtx } from "./layout";
 import { messagePage, playerPage, rankingPage, rankingPath, searchPage } from "./pages";
-import { loadPage, loadPost, postSlugs, publicTournament, publicTournaments, tournamentTeamsAndResults } from "./site-data";
+import { eventTournaments, loadPage, loadPost, loadPublicFixture, postSlugs, publicTournament, publicTournaments, tournamentTeamsAndResults } from "./site-data";
 import { notFoundPage, robotsTxt, sitemapXml, tournamentPage } from "./site-pages";
 import {
   calendarView, contactView, contentView, homeView, makeCtx, newsListView, newsView, rankingsIndexView, RENDER_VERSION, tournamentsView,
@@ -152,7 +152,12 @@ publicApp.get("/torneos/:slug", (c) =>
     if (!t) return html(notFoundPage(ctx, "Torneo no encontrado", "El torneo no existe o todavía no está publicado."), 404);
     const canonical = tournamentPath(t);
     if (`/torneos/${slugParam}` !== canonical) return redirect(canonical);
-    return html(tournamentPage(ctx, t, await tournamentTeamsAndResults(c.env.DB, t.id)));
+    const [data, fixture, siblings] = await Promise.all([
+      tournamentTeamsAndResults(c.env.DB, t.id),
+      t.type === "largo" ? loadPublicFixture(c.env.DB, t.id) : Promise.resolve(null),
+      t.eventId ? eventTournaments(c.env.DB, t.eventId, genders(settings)) : Promise.resolve([]),
+    ]);
+    return html(tournamentPage(ctx, t, data, { fixture, siblings }));
   }),
 );
 

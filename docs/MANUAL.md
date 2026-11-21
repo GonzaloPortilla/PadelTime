@@ -165,6 +165,23 @@ Desde **Contenidos web** se edita todo lo que se ve en la web, sin programar. De
 
 **Si dos organizadores editan lo mismo:** el segundo en guardar ve un aviso con quién guardó antes y un botón para recargar. Nada se pisa sin avisar. Toda versión anterior se puede **recuperar** desde **Historial de cambios**.
 
+## 7 ter. Fixtures de torneos largos (Eventos y pestaña Fixture)
+
+Sólo para torneos largos. Los Satélites / Americanos siguen con su cuadro final. Detalle en `docs/FIXTURES.md`.
+
+1. **Eventos → Nuevo evento:** nombre, fechas y categorías (por ejemplo C5, C6 y C7). Se crea un torneo por categoría.
+2. En cada categoría, **Parejas y resultados:** inscribí las parejas eligiendo jugadores de la base y marcá las cabezas de serie.
+3. Pestaña **Fixture**:
+   - **Configuración:** cantidad de grupos, cuántas pasan a Oro y a Plata, formato de los partidos y **orden de desempate**. Confirmá ese orden con la organización: el reglamento no lo define.
+   - **Grupos y parejas:** **Proponer grupos** → mové lo que haga falta → **Confirmar grupos y generar partidos**.
+   - **Partidos:** **Programar por fechas** (una por semana) o fecha, hora y cancha de cada partido. **Resultado** carga el marcador por set: la app avisa si es imposible.
+   - **Posiciones:** se calculan solas. Si queda un empate sin resolver, **Definir orden** (por ejemplo, por sorteo).
+   - **Copa de Oro / Plata:** al terminar los grupos aparece la propuesta de cruces. Tocá dos lugares para intercambiarlos y **Confirmar**. Los ganadores pasan solos a la ronda siguiente.
+   - **Publicar** (barra superior): la web muestra el fixture tal como lo publicaste. Después de cargar resultados, **Publicar cambios**.
+4. **Corregir** un resultado pide motivo. Si cambia quién debía jugar un partido que ya se jugó, la app no lo toca: aparece en **Problemas** y lo resuelve un administrador (**Anular ese resultado** y cargarlo de nuevo).
+5. Si una pareja abandona: **Grupos y parejas → Retirar**, con W.O. en sus partidos pendientes.
+6. Al final, las instancias para los puntos se cargan en **Parejas y resultados** y se **acredita** como siempre.
+
 ## 8. Publicación web y Google Sites
 
 - **Publicación web** (administrador): activar las páginas públicas, el título y qué temporadas se muestran.
@@ -211,6 +228,7 @@ En **Publicación web → Datos de la web** se editan:
 - Pueden trabajar a la vez sobre torneos distintos sin problema.
 - Sobre el **mismo torneo**, el último que guarda resultados es el que queda. Antes de acreditar, la app compara con lo que vio cada uno: si alguien cambió algo mientras tanto, pide **revisar de nuevo** en lugar de acreditar datos viejos.
 - Una acreditación o corrección hecha por dos personas a la vez se registra una sola vez.
+- **Fixture:** dos organizadores pueden cargar resultados de partidos distintos a la vez. Si los dos cargan el mismo partido o cambian la configuración, grupos o cuadros al mismo tiempo, el segundo recibe un aviso con el nombre y la hora del otro, y recarga. Nada se pisa.
 
 ---
 

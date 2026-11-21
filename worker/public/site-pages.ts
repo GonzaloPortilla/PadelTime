@@ -7,6 +7,8 @@
 import { GENDER_LABEL, TOURNAMENT_TYPE_LABEL, type TournamentStatus } from "@shared/constants";
 import { parseInline, SERIES, SERIES_LABEL, SERIES_SLUG, tournamentPath, whatsappUrl, type Block, type Series } from "@shared/site";
 import { h, raw, type Raw } from "./html";
+import { fixtureSection } from "./fixture-pages";
+import type { PublicFixture } from "@shared/fixture";
 import type { PublicRankingRef, PublicSeason } from "./data";
 import {
   fmtDate, fmtDay, fmtLong, fmtMonthShort, fmtMonthYear, fmtPts, fmtRange, ICON, instagramUrl, layout, mapsUrl, waButton,
@@ -317,7 +319,11 @@ function resultsTable(results: PublicResult[]): Raw {
 </table></div><p class="note">Puntos que suma cada integrante al ranking de su categoría.</p>`;
 }
 
-export function tournamentPage(ctx: PageCtx, t: PublicTournament, data: { teams: PublicTeam[]; results: PublicResult[] }): string {
+export function tournamentPage(
+  ctx: PageCtx, t: PublicTournament, data: { teams: PublicTeam[]; results: PublicResult[] },
+  extra: { fixture?: { data: PublicFixture; publishedAt: string } | null; siblings?: PublicTournament[] } = {},
+): string {
+  const siblings = (extra.siblings ?? []).filter((x) => x.id !== t.id);
   const cat = categoryLabel(ctx, t);
   const canRegister = t.registrationOpen && (t.status === "programado" || t.status === "en_curso");
   const message = `Hola! Quiero inscribirme al torneo ${t.name} (${cat}).`;
@@ -354,9 +360,15 @@ ${t.status === "finalizado" ? h`<p class="note">El resultado final se publica cu
     <p class="sub">Los puntos de este torneo suman al ranking ${t.seasonName}.</p>
     <div class="actions"><a class="btn" href="${rankingPath({ seasonId: t.seasonId, categoryId: t.categoryId, divisionId: null })}">Ver ranking ${t.categoryName}</a></div>
   </div>
+  ${t.eventName && siblings.length ? h`<div class="card pad" style="margin-top:14px">
+    <h3>${t.eventName}</h3>
+    <p class="sub">Otras categorías de este evento:</p>
+    <div class="chips">${siblings.map((x) => h`<a class="chip" href="${tournamentPath(x)}">${categoryLabel(ctx, x)}</a>`)}</div>
+  </div>` : ""}
   <p class="note"><a href="/torneos">← Volver a torneos</a></p>
 </aside>
-</div>`;
+</div>
+${extra.fixture ? fixtureSection(extra.fixture.data, extra.fixture.publishedAt) : ""}`;
   const location = ctx.site.venueName || t.venue
     ? { "@type": "Place", name: t.venue || ctx.site.venueName, ...(ctx.site.address ? { address: ctx.site.address } : {}) }
     : undefined;

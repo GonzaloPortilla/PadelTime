@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import {
-  BookOpenCheck, CalendarRange, ClipboardList, FileUp, Globe, LayoutDashboard, ListOrdered, LogOut, Menu, Shapes, Trophy, UserCog, Users, X, KeyRound, DatabaseBackup, LayoutTemplate,
+  BookOpenCheck, CalendarRange, ClipboardList, FileUp, Globe, LayoutDashboard, ListOrdered, LogOut, Menu, Shapes, Trophy, UserCog, Users, X, KeyRound, DatabaseBackup, LayoutTemplate, Layers,
 } from "lucide-react";
 import { ROLE_LABEL } from "@shared/constants";
 import { useAuth } from "@/auth/AuthContext";
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/", label: "Panel", icon: LayoutDashboard, end: true },
   { to: "/jugadores", label: "Jugadores", icon: Users },
   { to: "/torneos", label: "Torneos", icon: Trophy },
+  { to: "/eventos", label: "Eventos", icon: Layers },
   { to: "/rankings", label: "Rankings", icon: ListOrdered },
   { to: "/importar-rankings", label: "Importar rankings", icon: FileUp },
   { to: "/web", label: "Contenidos web", icon: LayoutTemplate },

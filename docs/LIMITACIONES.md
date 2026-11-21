@@ -1,6 +1,6 @@
 # Limitaciones conocidas
 
-Estado al cierre de la Fase 5B (noviembre de 2026). Ninguna afecta la integridad de los puntos.
+Estado al cierre de la Fase 9 (noviembre de 2026). Ninguna afecta la integridad de los puntos.
 
 ## Infraestructura gratuita
 
@@ -23,13 +23,24 @@ Estado al cierre de la Fase 5B (noviembre de 2026). Ninguna afecta la integridad
 | **Formato del texto** | Negrita, cursiva y enlaces. No hay tablas, colores ni tipografías libres (a propósito, para mantener el diseño y la seguridad). |
 | **Imágenes** | Sólo JPG, PNG y WebP; las animaciones (GIF) y SVG no se admiten. |
 
+## Fixtures (Fase 9)
+
+| Limitación | Detalle |
+|---|---|
+| **Desempates y W.O.** | El reglamento publicado no fija el orden de desempate ni cómo cuenta un W.O. en la tabla: son configurables por categoría y vienen con una propuesta que hay que confirmar. |
+| **Sin ida y vuelta** | La fase de grupos es todos contra todos a una rueda. |
+| **Puntos del ranking** | El fixture no acredita puntos solo: al final, las instancias se cargan en *Parejas y resultados* y se acredita como siempre (la lógica de acreditación no se modificó en esta fase). |
+| **Publicación manual** | La web muestra el fixture publicado: después de cargar resultados hay que tocar **Publicar cambios**. |
+| **Satélites / Americanos** | No tienen fixture (por definición): siguen con cuadro final y acreditación. |
+| **Inscripción** | La cargan los organizadores. No hay inscripción pública con cuentas de jugadores. |
+
 ## Funcionales
 
 | Limitación | Detalle |
 |---|---|
 | **Edición simultánea del mismo torneo** | Si dos organizadores editan los resultados del mismo torneo a la vez, prevalece el último que guarda: no hay bloqueo de edición. Para la **acreditación** sí hay protección: se rechaza si los datos cambiaron desde la previsualización, y nunca se acredita dos veces. |
 | **Reconocimiento de cuadros** | Está calibrado para cuadros de eliminación impresos o digitales (el formato de referencia: octavos, cuartos, semis y final). Fotos torcidas, borrosas o escritas a mano reducen la precisión. Siempre hay una pantalla de revisión antes de importar. Detalle en `docs/OCR.md`. |
-| **Formatos de torneo** | El puntaje se asigna por **instancia alcanzada** (más bonus opcionales por partidos). No hay cálculo automático de zonas o grupos con tabla de posiciones. La instancia "Fase de grupos" se asigna a mano. |
+| **Formatos de torneo** | El puntaje se asigna por **instancia alcanzada** (más bonus opcionales por partidos). Desde la Fase 9, los torneos largos tienen grupos con tabla de posiciones en la pestaña Fixture, pero la instancia de cada pareja para los puntos se sigue asignando a mano. |
 | **Cambio de categoría a mitad de temporada** | Los puntos ya ganados quedan en la categoría donde se acreditaron, también si después se corrige ese torneo. Si se necesita **mover** puntos históricos a la categoría nueva, hay que revertir el torneo y volver a acreditarlo, o usar ajustes manuales con motivo. No hay "traspaso de puntos" automático. |
 | **Divisiones y ajustes manuales** | Los ajustes manuales suman en el ranking general de la categoría, no en el de una división específica. |
 | **Rama del jugador** | No se puede cambiar la rama (Caballeros/Damas) de un jugador que ya tiene torneos o puntos. Si fue un error de carga, hay que darlo de alta de nuevo con la rama correcta. |

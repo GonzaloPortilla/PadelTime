@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Category, ScoringTemplate, Season } from "@shared/types";
+import type { Category, ScoringTemplate, Season, TournamentEvent } from "@shared/types";
 import type { Gender } from "@shared/constants";
 import type { SiteSettings } from "@shared/site";
 import { api } from "@/lib/api";
@@ -17,6 +17,8 @@ export const keys = {
   movements: ["movements"] as const,
   tournament: (id: number | string) => ["tournaments", "detail", String(id)] as const,
   site: ["site"] as const,
+  events: ["events"] as const,
+  fixture: (id: number | string) => ["fixture", String(id)] as const,
 };
 
 /** Datos de la web pública (WhatsApp, sede, aviso, ramas activas). */
@@ -66,4 +68,13 @@ export function useDebounced<T>(value: T, ms = 300): T {
     return () => clearTimeout(t);
   }, [value, ms]);
   return v;
+}
+
+/** Eventos con varias categorías (Fase 9). */
+export function useEvents(seasonId?: number | string | null) {
+  return useQuery({
+    queryKey: [...keys.events, "list", String(seasonId ?? "")],
+    queryFn: async () => (await api.get<{ items: TournamentEvent[] }>(`/events${seasonId ? `?seasonId=${seasonId}` : ""}`)).items,
+    staleTime: 30_000,
+  });
 }
