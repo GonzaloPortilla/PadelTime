@@ -161,13 +161,15 @@ export interface ComputedPreview {
 }
 
 /** Calcula la previsualización con los datos actuales de la base. */
-export async function buildPreview(db: D1Database, tournamentId: number): Promise<ComputedPreview> {
+export async function buildPreview(db: D1Database, tournamentId: number, override?: (teams: Team[]) => Team[]): Promise<ComputedPreview> {
   const tournament = await loadTournamentCtx(db, tournamentId);
-  const [scoring, teams, credited] = await Promise.all([
+  const [scoring, loaded, credited] = await Promise.all([
     loadScoring(db, tournamentId),
     loadTeams(db, tournamentId),
     loadCreditedCategories(db, tournamentId),
   ]);
+  // Fase 10: el fixture puede pedir la previsualización con las instancias que propone (sin guardarlas).
+  const teams = override ? override(loaded) : loaded;
   // Quien ya recibió puntos de este torneo los conserva en la categoría donde se acreditaron,
   // aunque después haya cambiado de categoría principal (ascenso/descenso): una corrección
   // del torneo no debe mudar puntos históricos a otro ranking.
@@ -192,4 +194,13 @@ export async function buildPreview(db: D1Database, tournamentId: number): Promis
   }
   const hash = await sha256Hex(`${tournamentId}|${tournament.seasonId}|${previewFingerprint(preview.rows)}`);
   return { tournament, scoring, preview, hash };
+}
+
+/**
+ * Fase 10: un torneo largo con partidos en el fixture toma las instancias de sus parejas del fixture
+ * (Fixture → Puntos). Así no hay dos fuentes de verdad: se bloquea la carga manual y la importación de cuadro.
+ */
+export async function fixtureLockReason(db: D1Database, tournamentId: number): Promise<string | null> {
+  const r = await db.prepare("SELECT EXISTS (SELECT 1 FROM fixture_matches WHERE tournament_id = ?) AS has").bind(tournamentId).first<{ has: number }>();
+  return r?.has === 1 ? "Este torneo tiene fixture: las instancias de las parejas se completan desde Fixture → Puntos." : null;
 }

@@ -28,7 +28,7 @@ export function useTournamentData(id: number) {
   });
   const teams = useQuery({
     queryKey: [...keys.tournaments, id, "teams"],
-    queryFn: () => api.get<{ items: Team[]; locked: string | null }>(`/tournaments/${id}/teams`),
+    queryFn: () => api.get<{ items: Team[]; locked: string | null; fixtureLocked?: string | null }>(`/tournaments/${id}/teams`),
   });
   return { scoring, teams };
 }
@@ -113,7 +113,7 @@ function TeamForm({ tournament, team, registered, onClose }: { tournament: Tourn
   );
 }
 
-export function TeamsTab({ tournament, onGoToScoring }: { tournament: Tournament; onGoToScoring: () => void }) {
+export function TeamsTab({ tournament, onGoToScoring, onGoToFixture }: { tournament: Tournament; onGoToScoring: () => void; onGoToFixture?: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
   const { scoring, teams } = useTournamentData(tournament.id);
@@ -136,6 +136,8 @@ export function TeamsTab({ tournament, onGoToScoring }: { tournament: Tournament
 
   const config = scoring.data?.item ?? null;
   const locked = teams.data?.locked ?? scoring.data?.locked ?? null;
+  // Fase 10: con fixture, las instancias salen de Fixture → Puntos (se pueden seguir inscribiendo parejas).
+  const resultsLocked = locked ?? teams.data?.fixtureLocked ?? null;
   const dirty = serverTeams.filter((t) => drafts[t.id] && !sameDraft(drafts[t.id]!, toDraft(t)));
   const registered = useMemo(() => new Set(serverTeams.flatMap((t) => t.players.map((p) => p.id))), [serverTeams]);
 
@@ -175,6 +177,12 @@ export function TeamsTab({ tournament, onGoToScoring }: { tournament: Tournament
   return (
     <div className="space-y-4">
       {locked && <p className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-600">{locked}</p>}
+      {!locked && teams.data?.fixtureLocked && (
+        <div className="flex flex-col gap-2 rounded-lg bg-brand-50 p-3 text-sm text-brand-800 ring-1 ring-inset ring-brand-200 sm:flex-row sm:items-center sm:justify-between">
+          <p>{teams.data.fixtureLocked}</p>
+          {onGoToFixture && <Button size="sm" variant="secondary" onClick={onGoToFixture}>Ir al fixture</Button>}
+        </div>
+      )}
       {!config && (
         <div className="flex flex-col gap-2 rounded-lg bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-inset ring-amber-200 sm:flex-row sm:items-center sm:justify-between">
           <p>Este torneo todavía no tiene puntuación configurada. Elegí una plantilla para poder cargar instancias.</p>
@@ -244,7 +252,7 @@ export function TeamsTab({ tournament, onGoToScoring }: { tournament: Tournament
                       <select
                         aria-label={`Instancia de ${name}`}
                         value={d.stageId}
-                        disabled={!!locked || !config}
+                        disabled={!!resultsLocked || !config}
                         onChange={(e) => setDraft(t.id, { stageId: e.target.value })}
                         className={cn("mt-0.5 h-9 w-44 rounded-lg border-0 bg-white px-2 text-sm text-slate-900 shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-brand-600 disabled:bg-slate-50",
                           d.stageId ? "ring-slate-300" : "ring-amber-400")}
@@ -255,13 +263,13 @@ export function TeamsTab({ tournament, onGoToScoring }: { tournament: Tournament
                     </label>
                     <label className="flex flex-col text-xs text-slate-500">
                       PJ
-                      <input aria-label={`Partidos jugados por ${name}`} type="number" min={0} inputMode="numeric" value={d.matchesPlayed} disabled={!!locked}
+                      <input aria-label={`Partidos jugados por ${name}`} type="number" min={0} inputMode="numeric" value={d.matchesPlayed} disabled={!!resultsLocked}
                         onChange={(e) => setDraft(t.id, { matchesPlayed: e.target.value })}
                         className="mt-0.5 h-9 w-14 rounded-lg border-0 bg-white px-2 text-sm shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-brand-600 disabled:bg-slate-50" />
                     </label>
                     <label className="flex flex-col text-xs text-slate-500">
                       PG
-                      <input aria-label={`Partidos ganados por ${name}`} type="number" min={0} inputMode="numeric" value={d.matchesWon} disabled={!!locked}
+                      <input aria-label={`Partidos ganados por ${name}`} type="number" min={0} inputMode="numeric" value={d.matchesWon} disabled={!!resultsLocked}
                         onChange={(e) => setDraft(t.id, { matchesWon: e.target.value })}
                         className={cn("mt-0.5 h-9 w-14 rounded-lg border-0 bg-white px-2 text-sm shadow-sm ring-1 ring-inset focus:ring-2 focus:ring-brand-600 disabled:bg-slate-50",
                           Number(d.matchesWon) > Number(d.matchesPlayed) ? "ring-red-400" : "ring-slate-300")} />
@@ -284,7 +292,7 @@ export function TeamsTab({ tournament, onGoToScoring }: { tournament: Tournament
         )}
       </Card>
 
-      {dirty.length > 0 && !locked && (
+      {dirty.length > 0 && !resultsLocked && (
         <div className="sticky bottom-4 z-20 flex flex-col gap-2 rounded-xl bg-ink-950 p-3 text-white shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <p className="px-1 text-sm">{dirty.length === 1 ? "1 pareja con cambios sin guardar" : `${dirty.length} parejas con cambios sin guardar`}</p>
           <div className="flex gap-2">

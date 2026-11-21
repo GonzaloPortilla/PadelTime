@@ -6,6 +6,7 @@ import type { AppEnv } from "../types";
 import { badRequest, conflict, HttpError } from "../lib/errors";
 import { parseBody, parseId } from "../lib/validate";
 import { auditStmt } from "../lib/audit";
+import { fixtureCreditBlock } from "./fixtures";
 import { buildPreview, loadActiveCredit, loadCreditedRows, loadCredits, lockReason, mapCredit } from "../lib/scoring-data";
 
 /**
@@ -29,6 +30,12 @@ creditRoutes.get("/:id/preview", async (c) => {
   const db = c.env.DB;
   const { tournament, preview, hash } = await buildPreview(db, id);
   const active = await loadActiveCredit(db, id);
+  // Fase 10: torneos largos con fixture.
+  const fixtureBlock = await fixtureCreditBlock(db, id);
+  if (fixtureBlock) {
+    preview.issues.unshift({ level: "error", code: "fixture_pendiente", message: fixtureBlock });
+    preview.canConfirm = false;
+  }
   const body: TournamentPreviewResponse = {
     ...preview,
     previewHash: hash,
@@ -62,6 +69,8 @@ creditRoutes.post("/:id/credits", async (c) => {
   if (tournament.status === "programado") {
     throw conflict("El torneo figura como programado. Iniciá el torneo antes de acreditar sus puntos.");
   }
+  const fixtureBlock = await fixtureCreditBlock(db, id);
+  if (fixtureBlock) throw conflict(fixtureBlock);
   if (!preview.canConfirm) {
     throw badRequest("Hay errores en los resultados que impiden acreditar: " + preview.issues.filter((i) => i.level === "error").map((i) => i.message).join(" "));
   }

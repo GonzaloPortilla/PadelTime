@@ -180,7 +180,17 @@ Sólo para torneos largos. Los Satélites / Americanos siguen con su cuadro fina
    - **Publicar** (barra superior): la web muestra el fixture tal como lo publicaste. Después de cargar resultados, **Publicar cambios**.
 4. **Corregir** un resultado pide motivo. Si cambia quién debía jugar un partido que ya se jugó, la app no lo toca: aparece en **Problemas** y lo resuelve un administrador (**Anular ese resultado** y cargarlo de nuevo).
 5. Si una pareja abandona: **Grupos y parejas → Retirar**, con W.O. en sus partidos pendientes.
-6. Al final, las instancias para los puntos se cargan en **Parejas y resultados** y se **acredita** como siempre.
+6. **Al terminar la competencia** (pestaña **Puntos**):
+   - aparecen las posiciones finales y la instancia de puntuación de cada una;
+   - revisá la Copa de Plata (el reglamento no define sus puntos);
+   - controlá la distribución;
+   - **Aplicar posiciones al torneo** → **Ir a Acreditación** → **Confirmar y acreditar puntos**.
+
+   Los rankings se actualizan al instante. Nada se acredita hasta esa confirmación.
+7. **Si después hay que corregir un resultado:**
+   - **Corregir** → **Revisar cambios** (muestra posiciones, cruces, conflictos y si hay puntos acreditados) → motivo → **Guardar**;
+   - si el torneo ya tenía puntos: en **Puntos** se ven las diferencias por jugador → **Aplicar corrección al torneo** (con motivo) → **Confirmar corrección** en Acreditación.
+8. Con fixture, la carga manual de instancias en *Parejas y resultados* queda bloqueada: todo sale del fixture.
 
 ## 8. Publicación web y Google Sites
 

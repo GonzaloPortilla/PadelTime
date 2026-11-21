@@ -6,7 +6,7 @@ import type { AppEnv } from "../types";
 import { badRequest, conflict } from "../lib/errors";
 import { parseBody, parseId } from "../lib/validate";
 import { auditStmt } from "../lib/audit";
-import { loadScoring, loadTeams, loadTournamentCtx, lockReason } from "../lib/scoring-data";
+import { loadScoring, loadTeams, loadTournamentCtx, lockReason, fixtureLockReason } from "../lib/scoring-data";
 
 export const directoryRoutes = new Hono<AppEnv>();
 
@@ -66,7 +66,7 @@ importRoutes.post("/:id/import", async (c) => {
   const input = await parseBody(c, importSchema);
   const db = c.env.DB;
   const t = await loadTournamentCtx(db, id);
-  const locked = lockReason(t);
+  const locked = lockReason(t) ?? (await fixtureLockReason(db, id));
   if (locked) throw conflict(locked);
   const [scoring, existing] = await Promise.all([loadScoring(db, id), loadTeams(db, id)]);
 

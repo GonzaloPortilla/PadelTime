@@ -1,6 +1,6 @@
 # Limitaciones conocidas
 
-Estado al cierre de la Fase 9 (noviembre de 2026). Ninguna afecta la integridad de los puntos.
+Estado al cierre de la Fase 10 (noviembre de 2026). Ninguna afecta la integridad de los puntos.
 
 ## Infraestructura gratuita
 
@@ -23,13 +23,15 @@ Estado al cierre de la Fase 9 (noviembre de 2026). Ninguna afecta la integridad 
 | **Formato del texto** | Negrita, cursiva y enlaces. No hay tablas, colores ni tipografías libres (a propósito, para mantener el diseño y la seguridad). |
 | **Imágenes** | Sólo JPG, PNG y WebP; las animaciones (GIF) y SVG no se admiten. |
 
-## Fixtures (Fase 9)
+## Fixtures y automatización (Fases 9 y 10)
 
 | Limitación | Detalle |
 |---|---|
 | **Desempates y W.O.** | El reglamento publicado no fija el orden de desempate ni cómo cuenta un W.O. en la tabla: son configurables por categoría y vienen con una propuesta que hay que confirmar. |
 | **Sin ida y vuelta** | La fase de grupos es todos contra todos a una rueda. |
-| **Puntos del ranking** | El fixture no acredita puntos solo: al final, las instancias se cargan en *Parejas y resultados* y se acredita como siempre (la lógica de acreditación no se modificó en esta fase). |
+| **Puntos del ranking** | Desde la Fase 10 el fixture propone las posiciones finales y las convierte en instancias para el motor de siempre. La acreditación la confirma el organizador: nunca es automática. |
+| **Puntos de la Copa de Plata** | El reglamento no los define. Se propone «Fase de grupos» marcado para revisar. Si corresponden otros, hay que agregar la instancia en Puntuación. |
+| **W.O. en las bonificaciones** | Un W.O. o un BYE no cuentan como partido jugado ni ganado para las bonificaciones por partido (si se configuran). |
 | **Publicación manual** | La web muestra el fixture publicado: después de cargar resultados hay que tocar **Publicar cambios**. |
 | **Satélites / Americanos** | No tienen fixture (por definición): siguen con cuadro final y acreditación. |
 | **Inscripción** | La cargan los organizadores. No hay inscripción pública con cuentas de jugadores. |

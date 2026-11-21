@@ -186,8 +186,8 @@ export function TournamentPage() {
       </div>
 
       {tab === "resumen" && <Summary t={t} onTab={setTab} />}
-      {tab === "parejas" && <TeamsTab tournament={t} onGoToScoring={() => setTab("puntuacion")} />}
-      {tab === "fixture" && t.type === "largo" && <FixtureTab tournament={t} />}
+      {tab === "parejas" && <TeamsTab tournament={t} onGoToScoring={() => setTab("puntuacion")} onGoToFixture={t.type === "largo" ? () => setTab("fixture") : undefined} />}
+      {tab === "fixture" && t.type === "largo" && <FixtureTab tournament={t} onGoToCredit={() => setTab("acreditacion")} />}
       {tab === "importar" && <ImportTab tournament={t} onDone={() => setTab("acreditacion")} onManualLoad={() => setTab("parejas")} />}
       {tab === "puntuacion" && <ScoringTab tournament={t} />}
       {tab === "acreditacion" && <CreditTab tournament={t} />}

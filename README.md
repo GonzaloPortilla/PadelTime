@@ -4,11 +4,11 @@ Aplicación web para gestionar los torneos y rankings de Padel Time: jugadores, 
 
 **Costo operativo mensual: USD 0.** Corre íntegramente en el plan gratuito de Cloudflare (Workers + D1 + Static Assets), sin servicios pagos.
 
-> Estado: **Fase 9 (fixtures de torneos largos)**. La web pública está en la raíz (`/`) y el panel en **`/admin`**: **Contenidos web** para editar la web, **Eventos** con varias categorías y la pestaña **Fixture** de cada torneo largo (grupos, partidos, tablas y Copa de Oro / Plata). Todavía **no está publicada**.
+> Estado: **Fase 10 (automatización integral: fixture → puntos → ranking)**. La web pública está en la raíz (`/`) y el panel en **`/admin`**: **Contenidos web** para editar la web, **Eventos** con varias categorías y la pestaña **Fixture** de cada torneo largo (grupos, partidos, tablas, Copa de Oro / Plata y, al terminar, posiciones finales → acreditación → ranking). Todavía **no está publicada**.
 >
 > | Documento | Para quién |
 > |---|---|
-> | [`docs/FIXTURES.md`](docs/FIXTURES.md) | **Fase 9:** eventos, grupos, resultados, tablas, Copa de Oro / Plata, conflictos y publicación del fixture |
+> | [`docs/FIXTURES.md`](docs/FIXTURES.md) | **Fases 9 y 10:** eventos, grupos, resultados, tablas, Copa de Oro / Plata, conflictos, publicación y del fixture a los puntos y el ranking |
 > | [`docs/CMS.md`](docs/CMS.md) | **Fase 8:** gestor de contenidos, multimedia, permisos, edición simultánea e historial |
 > | [`docs/WEB_PUBLICA.md`](docs/WEB_PUBLICA.md) | **Fase 7:** rutas, contenidos y SEO de la web pública, cambios en el panel |
 > | [`docs/WEB_OFICIAL.md`](docs/WEB_OFICIAL.md) | **Fase 6:** auditoría, arquitectura propuesta y plan de las Fases 7–11 para la web oficial (inventario de la web anterior en `docs/web-anterior/`) |

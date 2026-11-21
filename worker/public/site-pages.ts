@@ -330,6 +330,8 @@ export function tournamentPage(
   let resultsHtml: Raw;
   if (t.status === "cancelado") resultsHtml = empty("Torneo cancelado", h`<p>Este torneo fue cancelado y no otorga puntos.</p>`);
   else if (t.credited && data.results.length) resultsHtml = h`<h2>Resultado final</h2>${resultsTable(data.results)}`;
+  // Con fixture publicado, las parejas y resultados se ven ahí (no se repiten en otra lista).
+  else if (extra.fixture) resultsHtml = h``;
   else if (data.teams.length) {
     resultsHtml = h`<h2>Parejas inscriptas (${data.teams.length})</h2><div class="card list">${data.teams.map((tm) => h`<div class="row" style="display:block;padding:11px 16px;border-bottom:1px solid var(--line)">${tm.players.join(" / ") || "Pareja a confirmar"}</div>`)}</div>
 ${t.status === "finalizado" ? h`<p class="note">El resultado final se publica cuando se acreditan los puntos.</p>` : ""}`;

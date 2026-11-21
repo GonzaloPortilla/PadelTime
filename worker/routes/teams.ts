@@ -5,7 +5,7 @@ import type { AppEnv } from "../types";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { parseBody, parseId } from "../lib/validate";
 import { auditStmt } from "../lib/audit";
-import { loadScoring, loadTeams, loadTournamentCtx, lockReason, type TournamentCtx } from "../lib/scoring-data";
+import { fixtureLockReason, loadScoring, loadTeams, loadTournamentCtx, lockReason, type TournamentCtx } from "../lib/scoring-data";
 
 /** Fase 9: una pareja que ya está en el fixture queda fija (no se cambian sus jugadores ni se borra). */
 async function inFixture(db: D1Database, teamId: number): Promise<boolean> {
@@ -58,7 +58,7 @@ export const tournamentTeamRoutes = new Hono<AppEnv>();
 tournamentTeamRoutes.get("/:id/teams", async (c) => {
   const id = parseId(c.req.param("id"), "El torneo");
   const t = await loadTournamentCtx(c.env.DB, id);
-  return c.json({ items: await loadTeams(c.env.DB, id), locked: lockReason(t) });
+  return c.json({ items: await loadTeams(c.env.DB, id), locked: lockReason(t), fixtureLocked: await fixtureLockReason(c.env.DB, id) });
 });
 
 tournamentTeamRoutes.post("/:id/teams", async (c) => {
@@ -88,6 +88,8 @@ tournamentTeamRoutes.put("/:id/results", async (c) => {
   const { results } = await parseBody(c, resultsSchema);
   const db = c.env.DB;
   const t = await assertEditable(db, id);
+  const fixtureLock = await fixtureLockReason(db, id);
+  if (fixtureLock) throw conflict(fixtureLock);
   const [scoring, teams] = await Promise.all([loadScoring(db, id), loadTeams(db, id)]);
   const teamIds = new Set(teams.map((tm) => tm.id));
   const stageIds = new Set((scoring?.stages ?? []).map((s) => s.id));

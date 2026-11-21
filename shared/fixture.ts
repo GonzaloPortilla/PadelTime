@@ -732,6 +732,20 @@ export interface FixtureState {
   conflicts: FixtureConflict[];
   issues: FixtureIssue[];
   publication: { publishedAt: string; publishedByName: string | null; fixtureVersion: number } | null;
+  /** Fase 10: posiciones finales → puntuación del torneo. */
+  final: {
+    complete: boolean;
+    pending: number;
+    placements: FinalPlacement[];
+    stages: StageOption[];
+    /** Equivalencia guardada (null = todavía no se aplicó). */
+    stageMap: Record<string, number | null> | null;
+    /** Claves cuya equivalencia el reglamento no define (Copa de Plata): para revisar. */
+    review: string[];
+    /** Las instancias de las parejas coinciden con las posiciones finales del fixture. */
+    applied: boolean;
+    creditedVersion: number | null;
+  };
 }
 
 export interface FixtureHistoryItem {
@@ -749,3 +763,109 @@ export function cupEntries(cfg: FixtureConfig, groups: FxGroup[]): { oro: SlotSo
 }
 
 export const sourceKey = (s: SlotSource) => (s.kind === "grupo" ? `g${s.groupId}:${s.position}` : s.kind === "pareja" ? `t${s.teamId}` : "bye");
+
+// ─────────────────────────── Posiciones finales → motor de puntuación (Fase 10) ───────────────────────────
+/**
+ * Instancia alcanzada por una pareja en la competencia. La clave se usa para asignarle una instancia
+ * de la puntuación del torneo (tournament_stages): "oro:1" campeón de Oro, "oro:2" finalista,
+ * "oro:4" semifinal, "oro:8" cuartos…, "plata:…" ídem en Plata, "cuadro:…" en eliminación directa
+ * y "grupos" para quien no pasó de la fase de grupos.
+ */
+export interface FinalPlacement {
+  teamId: number;
+  key: string;
+  label: string;
+  /** Orden para mostrar (menor = mejor). */
+  order: number;
+  matchesPlayed: number;
+  matchesWon: number;
+}
+
+const PHASE_ORDER: Record<FixturePhase, number> = { cuadro: 0, oro: 0, plata: 1000, grupos: 5000 };
+
+export function placementLabel(key: string): string {
+  if (key === "grupos") return "Fase de grupos";
+  const [phase, n] = key.split(":") as [BracketPhase, string];
+  const teams = Number(n);
+  const where = phase === "cuadro" ? "" : ` · ${PHASE_LABEL[phase]}`;
+  if (teams === 1) return `Campeón${where}`;
+  if (teams === 2) return `Finalista${where}`;
+  return `${roundLabel(teams, 1).replace("Semifinales", "Semifinal")}${where}`;
+}
+
+/** ¿Terminó la competencia? (todos los partidos con resultado y cuadros armados). */
+export function fixtureComplete(matches: FxMatch[]): { complete: boolean; pending: number } {
+  const pending = matches.filter((m) => !isDecided(m.status)).length;
+  const hasBracket = matches.some((m) => m.phase !== "grupos");
+  return { complete: matches.length > 0 && pending === 0 && hasBracket, pending };
+}
+
+/**
+ * Partidos que suman al motor de puntos: los jugados, con retiro o resultado administrativo.
+ * Un W.O. o un BYE no son partidos disputados: no cuentan como jugados ni ganados.
+ */
+const counts = (m: FxMatch) => m.status === "jugado" || m.status === "retiro" || m.status === "administrativo";
+
+export function finalPlacements(teams: FxTeam[], matches: FxMatch[]): FinalPlacement[] {
+  const out = new Map<number, FinalPlacement>();
+  const mp = new Map<number, number>();
+  const mw = new Map<number, number>();
+  for (const m of matches) {
+    if (!counts(m) || m.team1Id === null || m.team2Id === null) continue;
+    for (const [id, side] of [[m.team1Id, 1], [m.team2Id, 2]] as const) {
+      mp.set(id, (mp.get(id) ?? 0) + 1);
+      if (m.winner === side) mw.set(id, (mw.get(id) ?? 0) + 1);
+    }
+  }
+  for (const phase of ["cuadro", "oro", "plata"] as const) {
+    const bm = matches.filter((m) => m.phase === phase);
+    if (!bm.length) continue;
+    const size = bm.filter((m) => m.round === 1).length * 2;
+    const rounds = bracketRounds(size);
+    for (const m of bm) {
+      const loser = isDecided(m.status) && m.winner ? (m.winner === 1 ? m.team2Id : m.team1Id) : null;
+      const winner = isDecided(m.status) && m.winner ? (m.winner === 1 ? m.team1Id : m.team2Id) : null;
+      const reached = size / 2 ** (m.round - 1); // equipos en esa ronda
+      if (loser !== null && m.status !== "bye") set(loser, `${phase}:${reached}`);
+      if (m.round === rounds && winner !== null) set(winner, `${phase}:1`);
+    }
+    function set(teamId: number, key: string) {
+      const n = Number(key.split(":")[1]);
+      const order = PHASE_ORDER[phase] + n;
+      const cur = out.get(teamId);
+      if (!cur || order < cur.order) out.set(teamId, { teamId, key, label: placementLabel(key), order, matchesPlayed: 0, matchesWon: 0 });
+    }
+  }
+  for (const t of teams) {
+    if (!out.has(t.id)) out.set(t.id, { teamId: t.id, key: "grupos", label: placementLabel("grupos"), order: PHASE_ORDER.grupos, matchesPlayed: 0, matchesWon: 0 });
+  }
+  return [...out.values()].map((p) => ({ ...p, matchesPlayed: mp.get(p.teamId) ?? 0, matchesWon: mw.get(p.teamId) ?? 0 }))
+    .sort((a, b) => a.order - b.order || a.teamId - b.teamId);
+}
+
+/** Instancias de la puntuación del torneo, para proponer la equivalencia con las posiciones finales. */
+export interface StageOption { id: number; label: string; rank: number; points: number; maxTeams: number | null }
+
+const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/**
+ * Propuesta de equivalencia posición final → instancia de la puntuación, por nombre:
+ * Campeón, Finalista, Semifinal, Cuartos, Octavos, 16avos, Fase de grupos.
+ * Para la Copa de Plata el reglamento no define puntos: se propone "Fase de grupos" (lo que
+ * efectivamente alcanzaron en la competencia principal) y se marca para revisar.
+ */
+export function defaultStageMap(keys: string[], stages: StageOption[]): { map: Record<string, number | null>; review: string[] } {
+  const find = (re: RegExp) => stages.find((s) => re.test(norm(s.label)))?.id ?? null;
+  const byTeams: Record<number, RegExp> = { 1: /campe/, 2: /finalista|subcampe/, 4: /semi/, 8: /cuarto/, 16: /octavo/, 32: /16 ?avo|dieciseisavo/, 64: /32 ?avo/ };
+  const groups = find(/grupo|zona|participa/);
+  const map: Record<string, number | null> = {};
+  const review: string[] = [];
+  for (const key of keys) {
+    if (key === "grupos") { map[key] = groups; continue; }
+    const [phase, n] = key.split(":") as [BracketPhase, string];
+    if (phase === "plata") { map[key] = groups; review.push(key); continue; }
+    const re = byTeams[Number(n)];
+    map[key] = re ? find(re) : null;
+  }
+  return { map, review };
+}
