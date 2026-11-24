@@ -170,7 +170,7 @@ describe("torneo con varias categorías", () => {
 
   it("borrar la última categoría elimina el torneo vacío", async () => {
     const { client, cats, season } = await base();
-    const ev = await openTournament(client, season.id, [cats[2].id]);
+    const ev = await openTournament(client, season.id, [cats[2]!.id]);
     expect((await client.delete(`/api/tournaments/${ev.tournaments[0].id}`)).status).toBe(200);
     expect((await client.get(`/api/events/${ev.id}`)).status).toBe(404);
   });
