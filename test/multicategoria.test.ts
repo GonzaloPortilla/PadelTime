@@ -16,7 +16,7 @@ async function base() {
   for (const [name, level] of [["C5", 5], ["C6", 6], ["C7", 7], ["C8", 8]] as const) cats.push((await client.post("/api/categories", { name, gender: "M", level })).json.item);
   const damas = (await client.post("/api/categories", { name: "C5", gender: "F", level: 5 })).json.item;
   const season = (await client.post("/api/seasons", { name: "Temporada 2026", year: 2026, startDate: "2026-01-01", endDate: "2026-12-31" })).json.item;
-  return { client, cats, damas, season };
+  return { client, cats: cats as [Json, Json, Json, Json], damas, season };
 }
 
 async function openTournament(client: Client, seasonId: number, catIds: number[], extra: Json = {}) {
@@ -170,7 +170,7 @@ describe("torneo con varias categorías", () => {
 
   it("borrar la última categoría elimina el torneo vacío", async () => {
     const { client, cats, season } = await base();
-    const ev = await openTournament(client, season.id, [cats[2]!.id]);
+    const ev = await openTournament(client, season.id, [cats[2].id]);
     expect((await client.delete(`/api/tournaments/${ev.tournaments[0].id}`)).status).toBe(200);
     expect((await client.get(`/api/events/${ev.id}`)).status).toBe(404);
   });
