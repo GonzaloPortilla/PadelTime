@@ -256,6 +256,25 @@ Detalle en [`docs/FIXTURES.md`](FIXTURES.md). Resumen técnico:
   - cupo opcional en el alta de parejas;
   - anular resultados es sólo para administradores.
 
+## 2 nonies. Torneos con varias categorías
+
+- **Modelo:**
+  - Torneo = `tournament_events`, con tipo, fechas e información pública (migración 0008).
+  - Competencia = `tournaments` (`event_id` + categoría + división; índice único `idx_tournaments_event_category`).
+  - No se agregaron entidades. La puntuación, acreditación, movimientos, fixture, importaciones y rankings siguen colgando de la competencia.
+- **Migración 0008:**
+  - completa los datos del torneo para los eventos de la Fase 9;
+  - crea un torneo por cada competencia sin evento (`source_tournament_id`) y la enlaza; los ids de competencia no cambian.
+- **API:**
+  - `POST /api/events` crea el torneo y una competencia por categoría en un lote (`insertTournamentStmts` con la subconsulta del evento);
+  - `PUT /api/events/:id` copia los datos generales a todas sus competencias y agrega categorías;
+  - `POST /api/tournaments` (alta de una competencia sin torneo) crea también su torneo, así toda competencia tiene uno;
+  - `PUT /api/tournaments/:id` sincroniza el torneo si es de una sola categoría;
+  - borrar la última competencia borra el torneo vacío.
+- **Web:**
+  - `groupByEvent` (worker/public/site-data.ts) agrupa las competencias para los listados (inicio, torneos, calendario, premios), con estado derivado (`eventStatus`) y enlace a la categoría de mayor nivel;
+  - la página `/torneos/<slug>-<id>` sigue siendo por competencia y muestra el selector de categorías del torneo.
+
 ## 3. API
 
 Todas las respuestas son JSON. Los errores tienen la forma `{ error: { code, message, fields? } }`, con los mensajes en español.

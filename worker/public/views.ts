@@ -12,7 +12,7 @@ import { rankingRefs, resolveSeason, visibleSeasons } from "./data";
 import { waButton, type PageCtx } from "./layout";
 import { indexPage } from "./pages";
 import {
-  eventsBetween, finished, inProgress, latestPosts, loadMedia, loadSponsors, publicTournaments, upcoming,
+  eventsBetween, finished, groupByEvent, inProgress, latestPosts, loadMedia, loadSponsors, publicTournaments, upcoming,
   type PublicPost, type SitePage,
 } from "./site-data";
 import {
@@ -20,7 +20,7 @@ import {
   TOURNAMENT_TABS, tournamentsPage, type RenderOpts, type TournamentTab,
 } from "./site-pages";
 
-export const RENDER_VERSION = "f9.1";
+export const RENDER_VERSION = "f9.2";
 
 export function makeCtx(settings: PublicSettings, url: URL, opts: { embed?: boolean; preview?: boolean } = {}): PageCtx {
   const embed = !!opts.embed;
@@ -41,11 +41,12 @@ async function opts(db: D1Database, ctx: PageCtx, page: SitePage | null, extraId
 }
 
 export async function homeView(db: D1Database, ctx: PageCtx, settings: PublicSettings, page: SitePage | null): Promise<string> {
-  const [all, posts, seasons, sponsors] = await Promise.all([
-    publicTournaments(db, genders(settings)), latestPosts(db, 3, new Date().toISOString()), visibleSeasons(db), loadSponsors(db),
+  const [grouped, posts, seasons, sponsors] = await Promise.all([
+    publicTournaments(db, genders(settings)).then(groupByEvent), latestPosts(db, 3, new Date().toISOString()), visibleSeasons(db), loadSponsors(db),
   ]);
   const season = resolveSeason(seasons, "actual");
   const refs = season && settings.enabled ? await rankingRefs(db, season.id, genders(settings)) : [];
+  const all = grouped;
   const up = upcoming(all, ctx.today);
   const running = inProgress(all);
   const o = await opts(db, ctx, page, [...sponsors.map((s) => s.mediaId), ...posts.map((p) => p.coverMediaId)]);
@@ -75,7 +76,7 @@ export async function contentView(db: D1Database, ctx: PageCtx, settings: Public
         waButton(ctx, "Consultar por WhatsApp", "Hola! Quiero anotarme a una cancha abierta."))), o);
     }
     case "premios": {
-      const all = await publicTournaments(db, genders(settings));
+      const all = groupByEvent(await publicTournaments(db, genders(settings)));
       const withPrizes = all.filter((t) => t.prizeInfo && t.status !== "cancelado")
         .sort((a, b) => Number(a.status === "finalizado") - Number(b.status === "finalizado") || a.startDate.localeCompare(b.startDate));
       return contentPage(ctx, page, "premios", h2("Premios por torneo", prizesList(ctx, withPrizes)), o);
@@ -96,7 +97,8 @@ export async function tournamentsView(db: D1Database, ctx: PageCtx, settings: Pu
   const num = (v: string) => (/^\d{1,9}$/.test(v) ? Number(v) : null);
   const series = (SERIES.find((s) => SERIES_SLUG[s] === get("modalidad")) ?? null) as Series | null;
   const f = { tab, seasonId: num(get("temporada")), categoryId: num(get("categoria")), series };
-  const filtered = all.filter((t) => (!f.seasonId || t.seasonId === f.seasonId) && (!f.categoryId || t.categoryId === f.categoryId) && (!f.series || t.series === f.series));
+  // Se filtran las categorías y después se agrupa: un torneo aparece una vez (con la categoría buscada como enlace).
+  const filtered = groupByEvent(all.filter((t) => (!f.seasonId || t.seasonId === f.seasonId) && (!f.categoryId || t.categoryId === f.categoryId) && (!f.series || t.series === f.series)));
   const list = tab === "proximos" ? upcoming(filtered, ctx.today) : tab === "en-curso" ? inProgress(filtered) : tab === "finalizados" ? finished(filtered)
     : [...filtered].sort((a, b) => b.seasonYear - a.seasonYear || a.startDate.localeCompare(b.startDate));
   return tournamentsPage(ctx, all, list, f, page, await opts(db, ctx, page));
@@ -107,7 +109,7 @@ export async function calendarView(db: D1Database, ctx: PageCtx, settings: Publi
   const [y, m] = month.split("-").map(Number) as [number, number];
   const first = `${month}-01`;
   const last = `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
-  const [all, events] = await Promise.all([publicTournaments(db, genders(settings)), eventsBetween(db, first, last)]);
+  const [all, events] = await Promise.all([publicTournaments(db, genders(settings)).then(groupByEvent), eventsBetween(db, first, last)]);
   const inMonth = all.filter((t) => t.status !== "cancelado" && t.startDate <= last && t.endDate >= first);
   return calendarPage(ctx, month, inMonth, events, page, await opts(db, ctx, page));
 }

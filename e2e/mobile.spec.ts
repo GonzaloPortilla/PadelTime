@@ -45,7 +45,7 @@ test("rankings y carga de resultados en el celular", async ({ page }) => {
   await page.getByRole("button", { name: "Abrir menú" }).click();
   await page.getByRole("link", { name: "Rankings", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Rankings" })).toBeVisible();
-  await page.getByLabel("Categoría").selectOption({ label: "5ta" });
+  await page.getByLabel("Categoría", { exact: true }).selectOption({ label: "5ta" });
   // Según el orden de las pruebas puede haber puntos o no: se verifica que cargue el contenido.
   await expect(page.getByTestId("ranking-table").or(page.getByText("Sin puntos todavía"))).toBeVisible();
   expect(await overflow()).toBeLessThanOrEqual(0);

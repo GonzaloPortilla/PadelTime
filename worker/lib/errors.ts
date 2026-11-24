@@ -41,6 +41,7 @@ function fromSqlite(err: Error): HttpError | null {
     if (msg.includes("initial_balances.")) return conflict("Uno de los jugadores ya tiene un saldo inicial vigente en ese ranking. Revertí la importación anterior o quitá la fila.");
     if (msg.includes("ranking_imports.file_hash")) return conflict("Ese archivo ya fue importado. Si querés reemplazarlo, revertí primero la importación anterior.");
     if (msg.includes("ranking_imports.content_hash")) return conflict("Ese contenido ya fue importado (aunque el archivo sea otro). Revertí primero la importación anterior.");
+    if (msg.includes("idx_tournaments_event_category") || msg.includes("tournaments.event_id")) return conflict("Esa categoría ya forma parte del torneo", { categoryId: "Categoría repetida" });
     if (msg.includes("tournament_team_players")) return conflict("Uno de los jugadores ya está inscripto en otra pareja de este torneo");
     if (msg.includes("tournament_credits.tournament_id")) return conflict("El torneo ya tiene una acreditación vigente. Recargá la página.");
     if (msg.includes("point_movements.reverses_movement_id")) return conflict("Ese movimiento ya fue revertido o anulado. Recargá la página.");

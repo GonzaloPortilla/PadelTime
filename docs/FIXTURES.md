@@ -4,17 +4,42 @@ Gestión de grupos, partidos, resultados, tablas de posiciones y cuadros de **Co
 
 Los **Satélites / Americanos** no tienen fixture. Siguen como hasta ahora: se carga el cuadro final (a mano o por imagen) y se acreditan los puntos.
 
-## Eventos con varias categorías
+## Torneos con varias categorías
 
-Un **evento** agrupa las categorías de un mismo torneo. Por ejemplo, *Qatar Major 2000* con C5, C6 y C7.
+Un **torneo** es un evento general que incluye una o más categorías. Por ejemplo, *Open Padel Time — Noviembre 2026* con C5, C6, C7 y C8.
 
-- **Panel → Eventos → Nuevo evento:** nombre, temporada, fechas, sede, modalidad y categorías.
-- Se crea **un torneo largo por categoría**, con la puntuación predeterminada (editable en cada uno). Cada categoría tiene sus propias parejas, fixture, puntos y acreditación.
-- Los torneos existentes no cambian. Para sumar un torneo ya cargado a un evento, se elige el evento en **Editar datos** del torneo.
-- Al borrar un evento, sus categorías quedan como torneos sueltos: no se borra nada deportivo.
-- Damas (rama discontinuada) no se ofrece en el alta de eventos. Los datos históricos se conservan.
+- **Panel → Torneos → Nuevo torneo.** Los datos generales se cargan una sola vez: nombre, tipo, temporada, fechas, sede, modalidad e información pública.
+- Las categorías se eligen con **casillas**: categorías activas y sus divisiones. Damas no se ofrece porque está discontinuada.
+- Cada categoría elegida es una **competencia** independiente, con:
+  - sus parejas;
+  - grupos, fixture, partidos, resultados y tablas;
+  - Copa de Oro y Copa de Plata;
+  - su puntuación;
+  - su estado (programado, en curso o finalizado);
+  - su acreditación.
+- Una categoría puede terminar y acreditarse mientras las otras siguen en juego. El estado del torneo se deriva de sus categorías.
+- Dentro del torneo hay una **pestaña por categoría**, encima de las secciones Resumen, Parejas, Fixture, etc., y un botón **Agregar categoría**.
+- **Editar datos** cambia los datos generales y los copia a todas las categorías. La temporada y la categoría de cada competencia no cambian.
+- Un torneo sólo se borra si ninguna categoría tiene parejas, partidos o puntos. Borrar la última categoría elimina el torneo vacío.
+- Los Satélites / Americanos también se crean como torneo (con una o varias categorías), pero siguen sin fixture: se carga el cuadro final por imagen o a mano y se acredita.
 
-**Modelo de datos:** se agregó la tabla `tournament_events` y la columna opcional `tournaments.event_id`. No se duplican parejas ni puntos: el evento sólo agrupa torneos.
+**Modelo de datos.** No hay entidades nuevas:
+
+- **Torneo** = `tournament_events`.
+- **Competencia** = `tournaments`: una categoría, y división opcional, de un único torneo.
+
+Todo lo que ya colgaba de la competencia (parejas, puntuación, acreditaciones, movimientos, rankings, importaciones de cuadros, fixture) no cambia.
+
+La migración 0008:
+
+- convierte cada torneo anterior de una categoría en un torneo con una competencia, conservando el mismo id, así que los enlaces y los puntos no cambian;
+- impide repetir una categoría dentro de un torneo.
+
+**Web pública.**
+
+- El torneo aparece **una sola vez** en Inicio, Torneos, Calendario y Premios, con sus categorías: «C5 · C6 · C7 · C8».
+- Al entrar, el visitante elige la categoría en la barra **Categorías**.
+- Cada categoría muestra sus propios fixture, resultados y tablas.
 
 ## Circuito de una categoría (pestaña Fixture del torneo)
 

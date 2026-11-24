@@ -165,11 +165,11 @@ Desde **Contenidos web** se edita todo lo que se ve en la web, sin programar. De
 
 **Si dos organizadores editan lo mismo:** el segundo en guardar ve un aviso con quién guardó antes y un botón para recargar. Nada se pisa sin avisar. Toda versión anterior se puede **recuperar** desde **Historial de cambios**.
 
-## 7 ter. Fixtures de torneos largos (Eventos y pestaña Fixture)
+## 7 ter. Torneos con varias categorías y fixtures (pestaña Fixture)
 
-Sólo para torneos largos. Los Satélites / Americanos siguen con su cuadro final. Detalle en `docs/FIXTURES.md`.
+Sólo para torneos largos. Los Satélites / Americanos siguen con su cuadro final. Un torneo puede tener varias categorías: el fixture es de cada categoría. Detalle en `docs/FIXTURES.md`.
 
-1. **Eventos → Nuevo evento:** nombre, fechas y categorías (por ejemplo C5, C6 y C7). Se crea un torneo por categoría.
+1. **Torneos → Nuevo torneo:** nombre, tipo, fechas e información pública una sola vez, y las **categorías participantes** con casillas (por ejemplo C5, C6, C7 y C8). Dentro del torneo hay una pestaña por categoría: cada una se juega, finaliza y acredita por su cuenta.
 2. En cada categoría, **Parejas y resultados:** inscribí las parejas eligiendo jugadores de la base y marcá las cabezas de serie.
 3. Pestaña **Fixture**:
    - **Configuración:** cantidad de grupos, cuántas pasan a Oro y a Plata, formato de los partidos y **orden de desempate**. Confirmá ese orden con la organización: el reglamento no lo define.

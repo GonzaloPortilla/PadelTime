@@ -87,11 +87,12 @@ describe("eventos con varias categorías", () => {
     expect(dup.status).toBe(409);
   });
 
-  it("al borrar el evento las categorías se conservan como torneos sueltos", async () => {
-    const { client, event } = await setup(0);
-    expect((await client.delete(`/api/events/${event.id}`)).status).toBe(200);
-    const t = (await client.get(`/api/tournaments/${event.tournaments[0].id}`)).json.item;
-    expect(t.eventId).toBeNull();
+  it("un torneo sólo se borra si sus categorías no tienen historia (y se borran con él)", async () => {
+    const { client, event, base } = await setup(1);
+    expect((await client.delete(`/api/events/${event.id}`)).status).toBe(409); // la 4ta tiene una pareja
+    const empty = (await client.post("/api/events", { seasonId: base.season.id, name: "Vacío", startDate: "2026-06-01", endDate: "2026-06-30", categoryIds: [base.cab4.id, base.cab5.id] })).json.item;
+    expect((await client.delete(`/api/events/${empty.id}`)).status).toBe(200);
+    for (const t of empty.tournaments) expect((await client.get(`/api/tournaments/${t.id}`)).status).toBe(404);
   });
 });
 
@@ -324,9 +325,8 @@ describe("edición simultánea, alcance e integridad", () => {
     expect(r.status).toBe(409);
     expect(r.json.error.message).toContain("sólo para torneos largos");
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM tournament_fixtures WHERE tournament_id = ?").bind(t.id).first("n")).toBe(0);
-    // Un americano no se puede agrupar en un evento.
-    const ev = await client.post("/api/tournaments", { seasonId: base.season.id, name: "Sat 2", type: "americano", categoryId: base.cab4.id, startDate: "2026-05-02", eventId: 1 });
-    expect(ev.status).toBe(400);
+    // Como todo torneo, el americano queda dentro de su torneo general (sin fixture).
+    expect(t.eventId).not.toBeNull();
   });
 
   it("una pareja en el fixture queda fija: no se cambian sus jugadores ni se borra", async () => {

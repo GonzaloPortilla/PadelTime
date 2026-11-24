@@ -89,3 +89,16 @@ export const TIEBREAKER_LABEL: Record<Tiebreaker, string> = {
   menos_torneos: "Menos torneos jugados",
 };
 export const DEFAULT_TIEBREAKERS: Tiebreaker[] = ["titulos", "finales", "mejor_torneo", "menos_torneos"];
+
+/**
+ * Estado de un torneo con varias categorías, derivado de sus competencias: cada categoría avanza
+ * por su cuenta (una puede estar finalizada mientras otra sigue en juego).
+ */
+export function eventStatus(statuses: TournamentStatus[]): TournamentStatus {
+  const active = statuses.filter((s) => s !== "cancelado");
+  if (!statuses.length) return "programado";
+  if (!active.length) return "cancelado";
+  if (active.every((s) => s === "programado")) return "programado";
+  if (active.every((s) => s === "finalizado")) return "finalizado";
+  return "en_curso";
+}

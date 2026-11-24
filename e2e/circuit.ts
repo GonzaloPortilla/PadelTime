@@ -41,10 +41,10 @@ export async function runCircuit(page: Page, o: Options) {
   await nav("Torneos");
   await page.getByRole("button", { name: "Nuevo torneo" }).first().click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Nombre").fill(o.name);
+  await dialog.getByRole("textbox", { name: "Nombre", exact: true }).fill(o.name);
   await dialog.getByRole("radio", { name: /largo/i }).click();
   await dialog.getByLabel("Temporada").selectOption({ label: "Temporada 2026 (activa)" });
-  await dialog.getByLabel("Categoría").selectOption({ label: "4ta · Caballeros" });
+  await dialog.getByRole("group", { name: "Categorías" }).getByLabel("4ta", { exact: true }).check();
   await dialog.getByLabel("Fecha de inicio").fill("2026-11-20");
   await dialog.getByLabel("Fecha de finalización").fill("2026-11-22");
   await checkLayout("01-nuevo-torneo");
@@ -112,7 +112,7 @@ export async function runCircuit(page: Page, o: Options) {
 
   // 7. Ranking interno actualizado.
   await nav("Rankings");
-  await page.getByLabel("Categoría").selectOption({ label: "4ta" });
+  await page.getByLabel("Categoría", { exact: true }).selectOption({ label: "4ta" });
   const ranking = page.getByTestId("ranking-table");
   await expect(ranking.getByRole("row", { name: /Salas, Nicolás/ }).first()).toContainText(String(before + o.championPoints));
   await checkLayout("07-ranking");

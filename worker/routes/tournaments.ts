@@ -171,17 +171,19 @@ tournamentRoutes.get("/:id", async (c) => {
  * Sentencias para crear un torneo con la puntuación predeterminada de su tipo. Usan MAX(id): dentro de
  * un mismo lote se pueden encadenar varias (un evento con varias categorías).
  */
-export function insertTournamentStmts(db: D1Database, input: TournamentData, userId: number): D1PreparedStatement[] {
+export function insertTournamentStmts(db: D1Database, input: TournamentData, userId: number, eventExpr?: string): D1PreparedStatement[] {
+  // eventExpr: subconsulta del torneo (evento) recién creado en el mismo lote.
+  const eventSql = eventExpr ?? "?";
   return [
     db
       .prepare(
         `INSERT INTO tournaments (season_id, name, type, category_id, division_id, start_date, end_date, venue, notes, created_by,
                                   public_visible, featured, registration_open, series, public_description, prize_info, event_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${eventSql}) RETURNING id`,
       )
       .bind(input.seasonId, input.name, input.type, input.categoryId, input.divisionId, input.startDate, input.endDate,
         input.venue, input.notes, userId, input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0,
-        input.series, input.publicDescription, input.prizeInfo, input.eventId ?? null),
+        input.series, input.publicDescription, input.prizeInfo, ...(eventExpr ? [] : [input.eventId ?? null])),
     // Se copia la plantilla predeterminada del tipo de torneo (queda editable para este torneo).
     db
       .prepare(
@@ -210,8 +212,21 @@ tournamentRoutes.post("/", async (c) => {
   const input = await parseBody(c, tournamentSchema);
   const db = c.env.DB;
   await validateRelations(db, input);
-  const [res] = await db.batch<{ id: number }>(insertTournamentStmts(db, input, c.get("user").id));
-  return c.json({ item: await getTournament(db, res!.results[0]!.id) }, 201);
+  const userId = c.get("user").id;
+  // Toda competencia pertenece a un torneo: si no se indica uno, se crea el torneo con esta única categoría.
+  const stmts = input.eventId
+    ? insertTournamentStmts(db, input, userId)
+    : [
+      db.prepare(
+        `INSERT INTO tournament_events (season_id, name, type, series, start_date, end_date, venue, created_by,
+                                        public_visible, featured, registration_open, public_description, prize_info)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(input.seasonId, input.name, input.type, input.series, input.startDate, input.endDate, input.venue, userId,
+        input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0, input.publicDescription, input.prizeInfo),
+      ...insertTournamentStmts(db, input, userId, "(SELECT MAX(id) FROM tournament_events)"),
+    ];
+  const res = await db.batch<{ id: number }>(stmts);
+  return c.json({ item: await getTournament(db, res[input.eventId ? 0 : 1]!.results[0]!.id) }, 201);
 });
 
 tournamentRoutes.put("/:id", async (c) => {
@@ -234,6 +249,13 @@ tournamentRoutes.put("/:id", async (c) => {
       .bind(input.seasonId, input.name, input.type, input.categoryId, input.divisionId, input.startDate, input.endDate,
         input.venue, input.notes, input.publicVisible ? 1 : 0, input.featured ? 1 : 0, input.registrationOpen ? 1 : 0, input.series,
         input.publicDescription, input.prizeInfo, input.eventId ?? null, new Date().toISOString(), id),
+    // Torneo de una sola categoría: sus datos generales son los de la competencia.
+    db.prepare(
+      `UPDATE tournament_events SET name = ?, type = ?, series = ?, start_date = ?, end_date = ?, venue = ?, public_visible = ?, featured = ?,
+              registration_open = ?, public_description = ?, prize_info = ?, updated_at = ?
+        WHERE id = (SELECT event_id FROM tournaments WHERE id = ?) AND (SELECT COUNT(*) FROM tournaments WHERE event_id = tournament_events.id) = 1`,
+    ).bind(input.name, input.type, input.series, input.startDate, input.endDate, input.venue, input.publicVisible ? 1 : 0, input.featured ? 1 : 0,
+      input.registrationOpen ? 1 : 0, input.publicDescription, input.prizeInfo, new Date().toISOString(), id),
     auditStmt(db, c.get("user").id, "editar", "torneo", id, `Editó el torneo ${input.name}`),
   ]);
   return c.json({ item: await getTournament(db, id) });
@@ -274,7 +296,9 @@ tournamentRoutes.delete("/:id", async (c) => {
   if (current.seasonStatus === "cerrada") throw conflict("El torneo pertenece a una temporada cerrada");
   await db.batch([
     db.prepare("DELETE FROM tournaments WHERE id = ?").bind(id),
-    auditStmt(db, c.get("user").id, "eliminar", "torneo", id, `Eliminó el torneo ${current.name}`),
+    // Si era la última categoría, el torneo general queda vacío y también se elimina.
+    db.prepare("DELETE FROM tournament_events WHERE id = ? AND NOT EXISTS (SELECT 1 FROM tournaments WHERE event_id = ?)").bind(current.eventId, current.eventId),
+    auditStmt(db, c.get("user").id, "eliminar", "torneo", id, `Eliminó la categoría ${current.categoryName} del torneo ${current.name}`),
   ]);
   return c.json({ ok: true });
 });

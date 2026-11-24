@@ -126,8 +126,7 @@ test("torneos: crear americano y cambiar estado", async ({ page }) => {
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("textbox", { name: "Nombre", exact: true }).fill("Americano Primavera");
   await dialog.getByRole("radio", { name: /Americano/ }).click();
-  await dialog.getByRole("combobox", { name: "Categoría" }).selectOption({ label: "6ta · Caballeros" });
-  await dialog.getByLabel("División").selectOption({ label: "B" });
+  await dialog.getByRole("group", { name: "Categorías" }).getByLabel("6ta · División B", { exact: true }).check();
   await dialog.getByLabel(/^Fecha/).fill("2026-11-28");
   await dialog.getByLabel("Sede").fill("Club Padel Norte");
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/08-nuevo-torneo.png` });

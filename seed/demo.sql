@@ -56,3 +56,11 @@ INSERT INTO tournament_team_players (team_id, tournament_id, player_id, ranking_
       OR (tt.seed = 2 AND p.code IN ('J-00004', 'J-00005'))
       OR (tt.seed IS NULL AND p.code IN ('J-00006', 'J-00007'))
    WHERE tt.tournament_id = (SELECT id FROM tournaments WHERE name = 'Torneo Apertura');
+
+-- Cada torneo de la demo pertenece a un torneo general (mismo criterio que la migración 0008).
+INSERT INTO tournament_events (season_id, name, series, start_date, end_date, venue, created_at, created_by,
+                               type, public_description, prize_info, public_visible, featured, registration_open, source_tournament_id)
+SELECT season_id, name, series, start_date, end_date, venue, created_at, created_by,
+       type, public_description, prize_info, public_visible, featured, registration_open, id
+  FROM tournaments WHERE event_id IS NULL;
+UPDATE tournaments SET event_id = (SELECT e.id FROM tournament_events e WHERE e.source_tournament_id = tournaments.id) WHERE event_id IS NULL;

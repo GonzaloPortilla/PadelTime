@@ -22,8 +22,11 @@ const STATUS_LABEL: Record<TournamentStatus, string> = { programado: "Próximo",
 const EVENT_LABEL: Record<EventKind, string> = { cancha_abierta: "Cancha abierta", evento: "Evento", inscripcion: "Inscripción", otro: "Evento" };
 
 const multiGender = (ctx: PageCtx) => ctx.site.activeGenders.length > 1;
-const categoryLabel = (ctx: PageCtx, t: Pick<PublicTournament, "categoryName" | "gender" | "divisionName">) =>
+const oneCategory = (ctx: PageCtx, t: Pick<PublicTournament, "categoryName" | "gender" | "divisionName">) =>
   `${t.categoryName}${multiGender(ctx) ? ` ${GENDER_LABEL[t.gender]}` : ""}${t.divisionName ? ` · ${t.divisionName}` : ""}`;
+/** Categoría de una competencia, o todas las de un torneo agrupado ("C5 · C6 · C7"). */
+const categoryLabel = (ctx: PageCtx, t: Pick<PublicTournament, "categoryName" | "gender" | "divisionName" | "competitions">) =>
+  t.competitions && t.competitions.length > 1 ? t.competitions.map((c) => oneCategory(ctx, c)).join(" · ") : oneCategory(ctx, t);
 
 /** Texto plano → párrafos (respeta saltos de línea). */
 const paragraphs = (text: string): Raw => h`${text.split(/\n{2,}/).map((p) => h`<p>${p.split("\n").map((l, i) => (i ? h`<br>${l}` : h`${l}`))}</p>`)}`;
@@ -171,7 +174,7 @@ function sectionHtml(ctx: PageCtx, b: Extract<Block, { type: "section" }>, d: Ho
   const head = (link?: Raw) => h`<div class="sec-head"><h2>${b.title}</h2>${link ?? ""}</div>`;
   switch (b.kind) {
     case "featured_tournament": {
-      const chosen = b.tournamentId ? d.all.find((t) => t.id === b.tournamentId && t.status !== "cancelado" && t.status !== "finalizado") : undefined;
+      const chosen = b.tournamentId ? d.all.find((t) => (t.competitions ?? [t]).some((c) => c.id === b.tournamentId) && t.status !== "cancelado" && t.status !== "finalizado") : undefined;
       const t = chosen ?? d.upcoming.find((x) => x.featured) ?? d.upcoming[0];
       if (!t) return h``;
       const cat = categoryLabel(ctx, t);
@@ -323,7 +326,6 @@ export function tournamentPage(
   ctx: PageCtx, t: PublicTournament, data: { teams: PublicTeam[]; results: PublicResult[] },
   extra: { fixture?: { data: PublicFixture; publishedAt: string } | null; siblings?: PublicTournament[] } = {},
 ): string {
-  const siblings = (extra.siblings ?? []).filter((x) => x.id !== t.id);
   const cat = categoryLabel(ctx, t);
   const canRegister = t.registrationOpen && (t.status === "programado" || t.status === "en_curso");
   const message = `Hola! Quiero inscribirme al torneo ${t.name} (${cat}).`;
@@ -335,7 +337,10 @@ export function tournamentPage(
 ${t.status === "finalizado" ? h`<p class="note">El resultado final se publica cuando se acreditan los puntos.</p>` : ""}`;
   } else resultsHtml = h`<h2>Resultados</h2>${empty("Todavía no hay resultados", h`<p>${t.status === "programado" ? "El torneo todavía no empezó." : "Los resultados se publican al finalizar el torneo."}</p>`)}`;
 
-  const body = h`<div class="two">
+  // Selector de categoría: el torneo es uno solo y cada categoría tiene su fixture, resultados y tablas.
+  const categories = extra.siblings && extra.siblings.length > 1 ? h`<nav class="cat-tabs" aria-label="Categorías del torneo"><span>Categorías</span>${extra.siblings.map((x) =>
+    x.id === t.id ? h`<a class="chip on" href="${tournamentPath(x)}" aria-current="page">${oneCategory(ctx, x)}</a>` : h`<a class="chip" href="${tournamentPath(x)}">${oneCategory(ctx, x)}</a>`)}</nav>` : h``;
+  const body = h`${categories}<div class="two">
 <div>
   <div class="card pad"><dl class="kv">
     <dt>Fechas</dt><dd>${t.startDate === t.endDate ? fmtLong(t.startDate) : fmtRange(t.startDate, t.endDate)}</dd>
@@ -360,11 +365,6 @@ ${t.status === "finalizado" ? h`<p class="note">El resultado final se publica cu
     <p class="sub">Los puntos de este torneo suman al ranking ${t.seasonName}.</p>
     <div class="actions"><a class="btn" href="${rankingPath({ seasonId: t.seasonId, categoryId: t.categoryId, divisionId: null })}">Ver ranking ${t.categoryName}</a></div>
   </div>
-  ${t.eventName && siblings.length ? h`<div class="card pad" style="margin-top:14px">
-    <h3>${t.eventName}</h3>
-    <p class="sub">Otras categorías de este evento:</p>
-    <div class="chips">${siblings.map((x) => h`<a class="chip" href="${tournamentPath(x)}">${categoryLabel(ctx, x)}</a>`)}</div>
-  </div>` : ""}
   <p class="note"><a href="/torneos">← Volver a torneos</a></p>
 </aside>
 </div>

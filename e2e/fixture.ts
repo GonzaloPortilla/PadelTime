@@ -1,6 +1,6 @@
 /**
  * Fase 9 · Circuito del fixture de un torneo largo (PC y celular):
- * evento con categorías → parejas → grupos → resultados → tablas → Copa de Oro / Plata → publicar → web.
+  * torneo con varias categorías → parejas → grupos → resultados → tablas → Copa de Oro / Plata → publicar → web.
  */
 import { expect, type Page } from "@playwright/test";
 import { login } from "./helpers";
@@ -16,31 +16,35 @@ async function api(page: Page, method: string, path: string, body?: unknown): Pr
   return json;
 }
 
-export async function fixtureCircuit(page: Page, opts: { mobile: boolean; name: string; category: string; shots?: string; prefix: string }) {
+export async function fixtureCircuit(page: Page, opts: { mobile: boolean; name: string; category: string; categories: string[]; shots?: string; prefix: string }) {
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   const shot = async (p: Page, step: string) => { if (opts.shots) await p.screenshot({ path: `${opts.shots}/${opts.prefix}-${step}.png`, fullPage: true }); };
   await login(page);
 
-  // 1. Evento con varias categorías (desde el menú Eventos).
+  // 1. Un único torneo con varias categorías (Torneos → Nuevo torneo).
   if (opts.mobile) await page.getByRole("button", { name: "Abrir menú" }).click();
-  await page.getByRole("link", { name: "Eventos" }).click();
-  await expect(page.getByRole("heading", { name: "Eventos", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Nuevo evento" }).first().click();
+  await page.getByRole("link", { name: "Torneos", exact: true }).click();
+  await page.getByRole("button", { name: "Nuevo torneo" }).first().click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Nombre").fill(opts.name);
+  await dialog.getByRole("textbox", { name: "Nombre", exact: true }).fill(opts.name);
   await dialog.getByLabel("Fecha de inicio").fill("2026-06-01");
   await dialog.getByLabel("Fecha de finalización").fill("2026-08-31");
-  await dialog.getByLabel(opts.category, { exact: true }).check();
-  await dialog.getByLabel("7ma", { exact: true }).check();
-  await expect(dialog.getByText("4ta").filter({ hasText: /^4ta$/ })).toHaveCount(1); // Damas no se ofrece: un solo "4ta"
-  await dialog.getByLabel("Publicar las categorías en la web").check();
-  await dialog.getByRole("button", { name: "Guardar" }).click();
-  await expect(page.getByText("Evento creado")).toBeVisible();
-  const card = page.locator("li").filter({ has: page.getByRole("heading", { name: opts.name }) });
-  await expect(card.getByRole("link", { name: new RegExp(`^${opts.category}`) })).toBeVisible();
-  await expect(card.getByRole("link", { name: /^7ma/ })).toBeVisible();
+  const group = dialog.getByRole("group", { name: "Categorías" });
+  await expect(group.getByLabel("4ta", { exact: true })).toHaveCount(1); // Damas está discontinuada: un solo "4ta"
+  for (const c of opts.categories) await group.getByLabel(c, { exact: true }).check();
+  await dialog.getByLabel("Publicar en la web").check();
   if (opts.mobile) expect(await overflow()).toBeLessThanOrEqual(0);
-  await card.getByRole("link", { name: new RegExp(`^${opts.category}`) }).click();
+  await shot(page, "nuevo-torneo");
+  await dialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText("Torneo creado")).toBeVisible();
+  await expect(page).toHaveURL(/\/admin\/torneos\/\d+\?tab=parejas/);
+
+  // Una pestaña por categoría; se entra a la categoría que se va a jugar.
+  const cats = page.getByRole("navigation", { name: "Categorías del torneo" });
+  for (const c of opts.categories) await expect(cats.getByRole("link", { name: new RegExp(`^${c}`) })).toBeVisible();
+  await cats.getByRole("link", { name: new RegExp(`^${opts.category}`) }).click();
+  await expect(cats.getByRole("link", { name: new RegExp(`^${opts.category}`) })).toHaveAttribute("aria-current", "page");
+  await page.getByRole("tab", { name: "Fixture" }).click();
   await expect(page).toHaveURL(/\/admin\/torneos\/\d+\?tab=fixture/);
   const tid = Number(/torneos\/(\d+)/.exec(page.url())![1]);
 
@@ -123,7 +127,12 @@ export async function fixtureCircuit(page: Page, opts: { mobile: boolean; name: 
   await expect(visitor.getByRole("heading", { name: "Copa de Oro" })).toBeVisible();
   await expect(visitor.getByRole("heading", { name: "Copa de Plata" })).toBeVisible();
   await expect(visitor.getByText("7-5 6-2").first()).toBeVisible();
-  await expect(visitor.getByRole("link", { name: "7ma" })).toBeVisible(); // otra categoría del evento
+  // Un solo torneo con selector de categoría.
+  const pubCats = visitor.getByRole("navigation", { name: "Categorías del torneo" });
+  for (const c of opts.categories) await expect(pubCats.getByRole("link", { name: c, exact: true })).toBeVisible();
+  await visitor.goto(new URL("/torneos?estado=historial", page.url()).href);
+  await expect(visitor.getByRole("heading", { name: opts.name })).toHaveCount(1);
+  await visitor.goto(new URL(`/torneos/x-${tid}`, page.url()).href);
   expect(await visitor.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
   await shot(visitor, "web");
 

@@ -33,6 +33,7 @@ Estado al cierre de la Fase 9 (noviembre de 2026). Ninguna afecta la integridad 
 | **Publicación manual** | La web muestra el fixture publicado: después de cargar resultados hay que tocar **Publicar cambios**. |
 | **Satélites / Americanos** | No tienen fixture (por definición): siguen con cuadro final y acreditación. |
 | **Inscripción** | La cargan los organizadores. No hay inscripción pública con cuentas de jugadores. |
+| **Datos por categoría** | Nombre, fechas, sede e información pública son del torneo y se copian a todas sus categorías. No hay fechas o premios distintos por categoría (las notas internas sí son por categoría). |
 
 ## Funcionales
 

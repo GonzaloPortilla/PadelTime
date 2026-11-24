@@ -1,17 +1,17 @@
 import { useMemo, useState } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus, ShieldCheck, Trophy } from "lucide-react";
-import { GENDER_LABEL, TOURNAMENT_STATUS_LABEL, TOURNAMENT_STATUSES, TOURNAMENT_TYPE_LABEL } from "@shared/constants";
+import { GENDER_LABEL, TOURNAMENT_STATUS_LABEL, TOURNAMENT_STATUSES, TOURNAMENT_TYPE_LABEL, eventStatus } from "@shared/constants";
 import type { Tournament } from "@shared/types";
 import { api, toQuery } from "@/lib/api";
 import { capitalize, dateParts, formatDayMonth } from "@/lib/format";
 import { keys, useDebounced, useSeasons } from "@/hooks/data";
 import { Button } from "@/components/ui/Button";
 import { FilterSelect } from "@/components/ui/Field";
-import { Badge, Card, EmptyState, ErrorState, PageHeader, SearchInput, Spinner } from "@/components/ui/misc";
+import { Card, EmptyState, ErrorState, PageHeader, SearchInput, Spinner } from "@/components/ui/misc";
 import { TournamentStatusBadge, TournamentTypeBadge } from "@/components/ui/badges";
-import { TournamentForm } from "@/components/forms/TournamentForm";
+import { TorneoForm } from "@/components/forms/TorneoForm";
 
 export function TournamentsPage() {
   const [params, setParams] = useSearchParams();
@@ -41,12 +41,17 @@ export function TournamentsPage() {
     placeholderData: keepPreviousData,
   });
 
-  // Agrupa por mes para facilitar la lectura.
+  // Un torneo (evento) con sus categorías; agrupados por mes para facilitar la lectura.
   const groups = useMemo(() => {
-    const map = new Map<string, Tournament[]>();
+    const events = new Map<number, Tournament[]>();
     for (const t of query.data ?? []) {
-      const key = t.startDate.slice(0, 7);
-      map.set(key, [...(map.get(key) ?? []), t]);
+      const key = t.eventId ?? -t.id;
+      events.set(key, [...(events.get(key) ?? []), t]);
+    }
+    const map = new Map<string, Tournament[][]>();
+    for (const comps of events.values()) {
+      const key = comps[0]!.startDate.slice(0, 7);
+      map.set(key, [...(map.get(key) ?? []), comps]);
     }
     return [...map.entries()];
   }, [query.data]);
@@ -61,7 +66,7 @@ export function TournamentsPage() {
     <>
       <PageHeader
         title="Torneos"
-        description="Torneos largos y americanos de cada temporada."
+        description="Cada torneo puede tener varias categorías: cada una es una competencia con sus parejas, fixture y puntos."
         actions={<Button icon={<Plus className="size-4" />} onClick={() => update({ nuevo: "1" })}>Nuevo torneo</Button>}
       />
       <Card>
@@ -103,33 +108,43 @@ export function TournamentsPage() {
                     {monthLabel(ym)}
                   </h2>
                   <ul className="divide-y divide-slate-100">
-                    {items.map((t) => (
-                      <li key={t.id}>
-                        <button type="button" onClick={() => navigate(`/torneos/${t.id}`)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 sm:gap-4 sm:px-5">
-                          <div className="w-12 shrink-0 text-center sm:w-14">
-                            <p className="text-[10px] font-semibold uppercase text-slate-500">{dateParts(t.startDate).weekday}</p>
-                            <p className="tabular text-lg font-bold leading-tight text-slate-900">{dateParts(t.startDate).day}</p>
-                            {t.endDate !== t.startDate && <p className="whitespace-nowrap text-[10px] text-slate-400">al {formatDayMonth(t.endDate)}</p>}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-slate-900">{t.name}</p>
-                            <p className="truncate text-xs text-slate-500">
-                              {t.categoryName} {GENDER_LABEL[t.gender]}{t.divisionName ? ` · ${t.divisionName}` : ""}{t.venue ? ` · ${t.venue}` : ""}
-                            </p>
-                            <div className="mt-1 flex flex-wrap gap-1.5 sm:hidden">
-                              <TournamentTypeBadge type={t.type} /><TournamentStatusBadge status={t.status} />
-                              {t.creditedVersion !== null && <Badge tone="green"><ShieldCheck className="size-3" />Acreditado</Badge>}
+                    {items.map((comps) => {
+                      const t = comps[0]!;
+                      const status = eventStatus(comps.map((c) => c.status));
+                      return (
+                        <li key={t.eventId ?? t.id} className="px-4 py-3 sm:px-5">
+                          <button type="button" onClick={() => navigate(`/torneos/${t.id}`)} className="flex w-full items-center gap-3 text-left sm:gap-4">
+                            <div className="w-12 shrink-0 text-center sm:w-14">
+                              <p className="text-[10px] font-semibold uppercase text-slate-500">{dateParts(t.startDate).weekday}</p>
+                              <p className="tabular text-lg font-bold leading-tight text-slate-900">{dateParts(t.startDate).day}</p>
+                              {t.endDate !== t.startDate && <p className="whitespace-nowrap text-[10px] text-slate-400">al {formatDayMonth(t.endDate)}</p>}
                             </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold text-slate-900">{t.eventName ?? t.name}</p>
+                              <p className="truncate text-xs text-slate-500">
+                                {comps.length === 1 ? `${t.categoryName} ${GENDER_LABEL[t.gender]}${t.divisionName ? ` · ${t.divisionName}` : ""}` : `${comps.length} categorías`}{t.venue ? ` · ${t.venue}` : ""}
+                              </p>
+                            </div>
+                            <div className="hidden items-center gap-2 sm:flex">
+                              <TournamentTypeBadge type={t.type} />
+                              <TournamentStatusBadge status={status} />
+                            </div>
+                            <ChevronRight className="size-4 shrink-0 text-slate-300" />
+                          </button>
+                          <div className="mt-2 flex flex-wrap gap-1.5 pl-[3.75rem] sm:pl-[4.5rem]">
+                            <span className="sm:hidden"><TournamentTypeBadge type={t.type} /></span>
+                            {comps.map((c) => (
+                              <Link key={c.id} to={`/torneos/${c.id}`} aria-label={`Categoría ${c.categoryName}${c.divisionName ? ` ${c.divisionName}` : ""}: ${TOURNAMENT_STATUS_LABEL[c.status]}`}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-brand-50 hover:ring-brand-300">
+                                {c.categoryName}{c.divisionName ? ` · ${c.divisionName}` : ""}
+                                <span className="text-slate-400">·</span><span className="text-slate-500">{TOURNAMENT_STATUS_LABEL[c.status]}</span>
+                                {c.creditedVersion !== null && <ShieldCheck className="size-3 text-ball-600" aria-label="Acreditado" />}
+                              </Link>
+                            ))}
                           </div>
-                          <div className="hidden items-center gap-2 sm:flex">
-                            <TournamentTypeBadge type={t.type} />
-                            <TournamentStatusBadge status={t.status} />
-                            {t.creditedVersion !== null && <Badge tone="green"><ShieldCheck className="size-3" />Acreditado</Badge>}
-                          </div>
-                          <ChevronRight className="size-4 shrink-0 text-slate-300" />
-                        </button>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </section>
               ))}
@@ -138,10 +153,10 @@ export function TournamentsPage() {
       </Card>
 
       {creating && (
-        <TournamentForm
-          tournament={null}
+        <TorneoForm
+          event={null}
           onClose={() => update({ nuevo: null })}
-          onSaved={(t) => navigate(`/torneos/${t.id}?tab=parejas`)}
+          onSaved={(e) => navigate(`/torneos/${e.tournaments[0]!.id}?tab=parejas`)}
         />
       )}
     </>

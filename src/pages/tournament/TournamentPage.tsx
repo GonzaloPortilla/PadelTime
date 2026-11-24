@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarDays, MapPin, Pencil, ShieldCheck, Trash2, Trophy, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, MapPin, Pencil, Plus, ShieldCheck, Trash2, Trophy, Users } from "lucide-react";
 import { GENDER_LABEL, TOURNAMENT_STATUS_LABEL, TOURNAMENT_TRANSITIONS, type TournamentStatus } from "@shared/constants";
 import type { Tournament } from "@shared/types";
 import { api } from "@/lib/api";
@@ -12,6 +12,8 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge, Card, CardHeader, ErrorState, Spinner } from "@/components/ui/misc";
 import { GenderBadge, TournamentStatusBadge, TournamentTypeBadge } from "@/components/ui/badges";
 import { TournamentForm } from "@/components/forms/TournamentForm";
+import { TorneoForm } from "@/components/forms/TorneoForm";
+import type { TournamentEvent } from "@shared/types";
 import { tournamentPath } from "@shared/site";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
@@ -74,7 +76,7 @@ function Summary({ t, onTab }: { t: Tournament; onTab: (k: TabKey) => void }) {
         {canDelete && (
           <div className="border-t border-slate-100 px-4 py-3 sm:px-5">
             <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50 hover:text-red-700" icon={<Trash2 className="size-4" />} onClick={() => setConfirmDelete(true)}>
-              Eliminar torneo
+              Eliminar esta categoría
             </Button>
           </div>
         )}
@@ -117,8 +119,8 @@ function Summary({ t, onTab }: { t: Tournament; onTab: (k: TabKey) => void }) {
         </Card>
       </div>
 
-      <ConfirmDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Eliminar torneo"
-        message="El torneo se eliminará definitivamente. Si sólo no se va a jugar, conviene cancelarlo para conservar el registro."
+      <ConfirmDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Eliminar categoría"
+        message="La categoría se eliminará del torneo (si era la única, se elimina el torneo). Si sólo no se va a jugar, conviene cancelarla para conservar el registro."
         confirmLabel="Eliminar"
         onConfirm={async () => {
           await api.delete(`/tournaments/${t.id}`);
@@ -146,6 +148,13 @@ export function TournamentPage() {
     queryKey: keys.tournament(id!),
     queryFn: async () => (await api.get<{ item: Tournament }>(`/tournaments/${id}`)).item,
   });
+  // El torneo general y todas sus categorías (cada una, una competencia independiente).
+  const eventId = query.data?.eventId ?? null;
+  const event = useQuery({
+    queryKey: [...keys.events, "detail", String(eventId)],
+    queryFn: async () => (await api.get<{ item: TournamentEvent }>(`/events/${eventId}`)).item,
+    enabled: eventId !== null,
+  });
 
   if (query.isPending) return <Spinner />;
   if (query.isError) return <ErrorState message={query.error.message} />;
@@ -158,10 +167,9 @@ export function TournamentPage() {
       </Link>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-navy sm:text-3xl">{t.name}</h1>
+          <h1 className="font-display text-2xl font-bold uppercase tracking-wide text-navy sm:text-3xl">{t.eventName ?? t.name}</h1>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <span>{t.seasonName}</span>·<span>{formatRange(t.startDate, t.endDate)}</span>
-            {t.eventName && <Link to="/eventos" className="font-medium text-brand-700 hover:underline">{t.eventName}</Link>}
             <TournamentTypeBadge type={t.type} />
             <GenderBadge gender={t.gender} />
             <TournamentStatusBadge status={t.status} />
@@ -172,6 +180,25 @@ export function TournamentPage() {
           <Button variant="secondary" icon={<Pencil className="size-4" />} onClick={() => setEditing(true)}>Editar datos</Button>
         )}
       </div>
+
+      {/* Una pestaña por categoría del torneo: cada una con sus parejas, fixture, puntos y acreditación. */}
+      <nav className="-mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="Categorías del torneo">
+        <div className="flex items-center gap-1.5">
+          <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Categorías</span>
+          {(event.data?.tournaments ?? [t]).map((c) => (
+            <Link key={c.id} to={`/torneos/${c.id}${tab === "resumen" || (tab === "fixture" && c.type !== "largo") ? "" : `?tab=${tab}`}`} aria-current={c.id === t.id ? "page" : undefined}
+              className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset transition-colors",
+                c.id === t.id ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-slate-700 ring-slate-300 hover:bg-brand-50")}>
+              {c.categoryName}{c.divisionName ? ` · ${c.divisionName}` : ""}
+              <span className={cn("text-xs font-medium", c.id === t.id ? "text-brand-100" : "text-slate-500")}>{TOURNAMENT_STATUS_LABEL[c.status]}</span>
+              {c.creditedVersion !== null && <ShieldCheck className="size-3.5" aria-label="Acreditado" />}
+            </Link>
+          ))}
+          {t.seasonStatus !== "cerrada" && event.data && (
+            <Button size="sm" variant="ghost" icon={<Plus className="size-4" />} onClick={() => setEditing(true)}>Agregar categoría</Button>
+          )}
+        </div>
+      </nav>
 
       <div className="-mx-4 mb-5 overflow-x-auto border-b border-slate-200 px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Secciones del torneo">
         <div className="flex gap-1">
@@ -192,7 +219,9 @@ export function TournamentPage() {
       {tab === "puntuacion" && <ScoringTab tournament={t} />}
       {tab === "acreditacion" && <CreditTab tournament={t} />}
 
-      {editing && <TournamentForm tournament={t} onClose={() => setEditing(false)} />}
+      {editing && (event.data
+        ? <TorneoForm event={event.data} onClose={() => setEditing(false)} />
+        : <TournamentForm tournament={t} onClose={() => setEditing(false)} />)}
     </>
   );
 }

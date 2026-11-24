@@ -4,7 +4,7 @@ Aplicación web para gestionar los torneos y rankings de Padel Time: jugadores, 
 
 **Costo operativo mensual: USD 0.** Corre íntegramente en el plan gratuito de Cloudflare (Workers + D1 + Static Assets), sin servicios pagos.
 
-> Estado: **Fase 9 (fixtures de torneos largos)**. La web pública está en la raíz (`/`) y el panel en **`/admin`**: **Contenidos web** para editar la web, **Eventos** con varias categorías y la pestaña **Fixture** de cada torneo largo (grupos, partidos, tablas y Copa de Oro / Plata). Todavía **no está publicada**.
+> Estado: **Fase 9 (fixtures de torneos largos)**. La web pública está en la raíz (`/`) y el panel en **`/admin`**: **Contenidos web** para editar la web, **Torneos con varias categorías** (una pestaña por categoría) y la pestaña **Fixture** de cada torneo largo (grupos, partidos, tablas y Copa de Oro / Plata). Todavía **no está publicada**.
 >
 > | Documento | Para quién |
 > |---|---|

@@ -149,7 +149,6 @@ export const tournamentSchema = z
     eventId: optionalId,
   })
   .transform((t) => ({ ...t, endDate: t.type === "americano" || !t.endDate ? t.startDate : t.endDate }))
-  .refine((t) => t.type === "largo" || t.eventId === null, { message: "Sólo los torneos largos se agrupan en eventos", path: ["eventId"] })
   .refine((t) => t.endDate >= t.startDate, { message: "La fecha de fin debe ser posterior al inicio", path: ["endDate"] });
 
 export const tournamentStatusSchema = z.object({ status: z.enum(TOURNAMENT_STATUSES) });
@@ -390,22 +389,35 @@ export const publicationSettingsSchema = z.object({
 export type PublicationSettingsInput = z.input<typeof publicationSettingsSchema>;
 export type RankingImportPayload = z.output<typeof rankingImportSchema>;
 
-// ─── Fase 9: eventos con varias categorías ───
+// ─── Torneos con varias categorías ───
+// Torneo = evento general (tournament_events). Competencia = una categoría (y división opcional) del torneo (tournaments).
+const competitionRef = z.object({ categoryId: id, divisionId: optionalId });
+
 export const tournamentEventSchema = z
   .object({
     seasonId: id,
     name: required("El nombre", 100),
+    type: z.enum(TOURNAMENT_TYPES, { message: "Elegí el tipo de torneo" }).default("largo"),
     series: z.union([z.enum(SERIES), z.literal("").transform(() => null), z.null()]).default(null),
     startDate: isoDate("Fecha"),
-    endDate: isoDate("Fecha de fin"),
+    endDate: optionalIsoDate,
     venue: optionalText(100),
     notes: optionalText(1000),
     publicVisible: z.boolean().default(false),
-    /** Categorías nuevas a crear dentro del evento (una competencia por categoría). */
+    featured: z.boolean().default(false),
+    registrationOpen: z.boolean().default(false),
+    publicDescription: optionalText(2000),
+    prizeInfo: optionalText(1000),
+    /** Categorías (competencias) a crear. Al editar: las que se agregan. */
+    competitions: z.array(competitionRef).max(20, "Máximo 20 categorías").default([]),
+    /** Compatibilidad (Fase 9): lista simple de categorías sin división. */
     categoryIds: z.array(id).max(20, "Máximo 20 categorías").default([]),
-    /** Al editar: copiar nombre, fechas, sede y modalidad a las categorías sin puntos acreditados. */
-    applyToCategories: z.boolean().default(false),
   })
+  .transform(({ categoryIds, ...e }) => ({
+    ...e,
+    endDate: e.type === "americano" || !e.endDate ? e.startDate : e.endDate,
+    competitions: [...e.competitions, ...categoryIds.map((categoryId) => ({ categoryId, divisionId: null as number | null }))],
+  }))
   .refine((e) => e.endDate >= e.startDate, { message: "La fecha de fin debe ser posterior al inicio", path: ["endDate"] })
-  .refine((e) => new Set(e.categoryIds).size === e.categoryIds.length, { message: "Hay categorías repetidas", path: ["categoryIds"] });
+  .refine((e) => new Set(e.competitions.map((c) => `${c.categoryId}:${c.divisionId ?? 0}`)).size === e.competitions.length, { message: "Hay categorías repetidas", path: ["competitions"] });
 export type TournamentEventInput = z.input<typeof tournamentEventSchema>;

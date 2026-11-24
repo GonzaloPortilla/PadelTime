@@ -54,7 +54,7 @@ test("previsualización y acreditación (una sola vez)", async ({ page }) => {
 test("ranking por categoría principal y exportación a CSV y Excel", async ({ page }) => {
   await login(page);
   await page.getByRole("link", { name: "Rankings", exact: true }).click();
-  await page.getByLabel("Categoría").selectOption({ label: "4ta" });
+  await page.getByLabel("Categoría", { exact: true }).selectOption({ label: "4ta" });
   const table = page.getByTestId("ranking-table");
   await expect(table.locator("tbody tr")).toHaveCount(2);
   await expect(table.locator("tbody tr").first()).toContainText("100");
@@ -80,7 +80,7 @@ test("ranking por categoría principal y exportación a CSV y Excel", async ({ p
   expect((await seasonDl).suggestedFilename()).toBe("rankings-temporada-2026.xlsx");
 
   // El jugador de 3ra que jugó el torneo de 4ta suma en el ranking de 3ra.
-  await page.getByLabel("Categoría").selectOption({ label: "3ra" });
+  await page.getByLabel("Categoría", { exact: true }).selectOption({ label: "3ra" });
   await expect(table.locator("tbody tr")).toHaveCount(1);
   await expect(table).toContainText("Romero, Nicolás");
   await expect(table).toContainText("50");

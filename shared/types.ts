@@ -435,18 +435,29 @@ export interface PublicationOverview {
   version: number;
 }
 
-/** Evento general con varias categorías (Fase 9). Cada categoría es un torneo largo. */
+/**
+ * Torneo: evento general que agrupa una o más competencias (una por categoría).
+ * Cada competencia es un `Tournament` con sus parejas, fixture, puntuación y acreditación.
+ */
 export interface TournamentEvent {
   id: number;
   seasonId: number;
   seasonName: string;
   seasonStatus: SeasonStatus;
   name: string;
+  type: TournamentType;
   series: import("./site").Series | null;
   startDate: string;
   endDate: string;
   venue: string | null;
   notes: string | null;
+  publicVisible: boolean;
+  featured: boolean;
+  registrationOpen: boolean;
+  publicDescription: string | null;
+  prizeInfo: string | null;
+  /** Derivado de sus competencias: en curso si alguna está en curso (o unas terminaron y otras no). */
+  status: TournamentStatus;
   createdAt: string;
   tournaments: Tournament[];
 }

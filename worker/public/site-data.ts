@@ -4,7 +4,7 @@
  *  - nombres de jugadores (como ya muestran los rankings), nunca documento, teléfono, email ni notas;
  *  - contenidos publicados.
  */
-import type { Gender, TournamentStatus, TournamentType } from "@shared/constants";
+import { eventStatus, type Gender, type TournamentStatus, type TournamentType } from "@shared/constants";
 import { parseBlocks, type Block, type Series } from "@shared/site";
 import type { PublicFixture } from "@shared/fixture";
 
@@ -48,19 +48,22 @@ export interface PublicTournament {
   featured: boolean; description: string | null; prizeInfo: string | null; registrationOpen: boolean;
   teamCount: number; credited: boolean;
   eventId: number | null; eventName: string | null;
+  categoryLevel: number;
+  /** En un torneo con varias categorías: todas sus competencias publicadas (ver groupByEvent). */
+  competitions?: PublicTournament[];
 }
 
 interface TRow {
   id: number; name: string; type: TournamentType; series: Series | null; status: TournamentStatus; start_date: string; end_date: string; venue: string | null;
   season_id: number; season_name: string; season_year: number; category_id: number; category_name: string; gender: Gender;
   division_id: number | null; division_name: string | null; featured: number; public_description: string | null; prize_info: string | null;
-  registration_open: number; team_count: number; credited: number; event_id: number | null; event_name: string | null;
+  registration_open: number; team_count: number; credited: number; event_id: number | null; event_name: string | null; category_level: number;
 }
 
 const T_SELECT = `
   SELECT t.id, t.name, t.type, t.series, t.status, t.start_date, t.end_date, t.venue,
          s.id AS season_id, s.name AS season_name, s.year AS season_year,
-         c.id AS category_id, c.name AS category_name, c.gender, d.id AS division_id, d.name AS division_name,
+         c.id AS category_id, c.name AS category_name, c.gender, c.level AS category_level, d.id AS division_id, d.name AS division_name,
          t.featured, t.public_description, t.prize_info, t.registration_open,
          (SELECT COUNT(*) FROM tournament_teams tt WHERE tt.tournament_id = t.id) AS team_count,
          EXISTS (SELECT 1 FROM tournament_credits cr WHERE cr.tournament_id = t.id AND cr.status = 'vigente') AS credited,
@@ -76,8 +79,38 @@ const mapT = (r: TRow): PublicTournament => ({
   seasonId: r.season_id, seasonName: r.season_name, seasonYear: r.season_year,
   categoryId: r.category_id, categoryName: r.category_name, gender: r.gender, divisionId: r.division_id, divisionName: r.division_name,
   featured: r.featured === 1, description: r.public_description, prizeInfo: r.prize_info, registrationOpen: r.registration_open === 1,
-  teamCount: r.team_count, credited: r.credited === 1, eventId: r.event_id, eventName: r.event_name,
+  teamCount: r.team_count, credited: r.credited === 1, eventId: r.event_id, eventName: r.event_name, categoryLevel: r.category_level,
 });
+
+/**
+ * Un torneo con varias categorías aparece UNA vez en los listados: se agrupan sus competencias y se usa
+ * la de mayor nivel como enlace (dentro de la página se elige la categoría). Estado, fechas y destacados
+ * se derivan de todas sus categorías.
+ */
+export function groupByEvent(list: PublicTournament[]): PublicTournament[] {
+  const groups = new Map<string, PublicTournament[]>();
+  for (const t of list) {
+    const key = t.eventId ? `e${t.eventId}` : `t${t.id}`;
+    groups.set(key, [...(groups.get(key) ?? []), t]);
+  }
+  return [...groups.values()].map((comps) => {
+    const sorted = [...comps].sort((a, b) => a.categoryLevel - b.categoryLevel || a.categoryName.localeCompare(b.categoryName, "es") || a.id - b.id);
+    const first = sorted[0]!;
+    if (sorted.length === 1) return first;
+    return {
+      ...first,
+      name: first.eventName ?? first.name,
+      status: eventStatus(sorted.map((c) => c.status)),
+      startDate: sorted.reduce((m, c) => (c.startDate < m ? c.startDate : m), first.startDate),
+      endDate: sorted.reduce((m, c) => (c.endDate > m ? c.endDate : m), first.endDate),
+      featured: sorted.some((c) => c.featured),
+      registrationOpen: sorted.some((c) => c.registrationOpen),
+      teamCount: sorted.reduce((n, c) => n + c.teamCount, 0),
+      credited: sorted.every((c) => c.credited),
+      competitions: sorted,
+    };
+  });
+}
 
 /** Todos los torneos públicos de las ramas activas (volúmenes chicos: se filtra en memoria). */
 export async function publicTournaments(db: D1Database, genders: Gender[]): Promise<PublicTournament[]> {
@@ -93,7 +126,7 @@ export async function publicTournament(db: D1Database, id: number, genders: Gend
 
 /** Categorías públicas de un mismo evento (Fase 9). */
 export async function eventTournaments(db: D1Database, eventId: number, genders: Gender[]): Promise<PublicTournament[]> {
-  const { results } = await db.prepare(`${T_SELECT} AND t.event_id = ? ORDER BY c.level, c.name`).bind(eventId).all<TRow>();
+  const { results } = await db.prepare(`${T_SELECT} AND t.event_id = ? ORDER BY c.level, c.name, t.id`).bind(eventId).all<TRow>();
   return results.map(mapT).filter((t) => genders.includes(t.gender));
 }
 
