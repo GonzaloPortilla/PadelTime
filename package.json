@@ -24,7 +24,7 @@
     "db:backup:remote": "wrangler d1 export DB --remote --config wrangler.jsonc --output=respaldo-padel-time.sql",
     "preflight:prueba": "node scripts/preflight.mjs --env prueba",
     "deploy:prueba": "node scripts/deploy.mjs --env prueba",
-    "db:seed:prueba": "wrangler d1 execute DB --remote --config wrangler.jsonc --env prueba --file=seed/demo.sql",
+    "demo:prueba": "node scripts/cargar-demo.mjs",
     "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {

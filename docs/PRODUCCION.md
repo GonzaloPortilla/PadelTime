@@ -77,11 +77,11 @@ npm run deploy:prueba
 ```
 
 ```bash
-npm run db:seed:prueba
+npm run user:create -- --username admin --name "Tu Nombre" --remote --env prueba
 ```
 
 ```bash
-npm run user:create -- --username admin --name "Tu Nombre" --remote --env prueba
+npm run demo:prueba -- --url https://padel-time-prueba.<subdominio>.workers.dev --usuario admin
 ```
 
 Verificación:
@@ -187,7 +187,7 @@ Lo que falta que entregue la organización está en `MIGRACION_CONTENIDOS.md`, s
   - fotos con caché de Cloudflare (dominio propio) y purga al borrar.
 - **Entorno de prueba:**
   - `env.prueba` en `wrangler.jsonc`, `ENVIRONMENT=prueba` (franja, `noindex`, `robots.txt` bloqueado);
-  - `npm run deploy:prueba`, `npm run db:seed:prueba`.
+  - `npm run deploy:prueba`, `npm run demo:prueba` (datos ficticios por la API, `scripts/cargar-demo.mjs`).
 - **Scripts:**
   - `scripts/deploy.mjs`: despliegue con verificación de entorno;
   - `scripts/check-links.mjs`: verificador de enlaces y de direcciones viejas;

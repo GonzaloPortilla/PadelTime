@@ -178,17 +178,41 @@ npm run deploy:prueba
 ```
 
 ```bash
-npm run db:seed:prueba
+npm run user:create -- --username admin --name "Admin Prueba" --remote --env prueba
 ```
+
+La contraseña se pide por consola: no queda en el código, en Git ni en el historial. Después se cargan los datos de demostración, que son **todos ficticios**:
 
 ```bash
-npm run user:create -- --username admin --name "Prueba" --remote --env prueba
+npm run demo:prueba -- --url https://padel-time-prueba.<subdominio>.workers.dev --usuario admin
 ```
 
-`db:seed:prueba` carga los datos de demostración (jugadores, torneos y rankings ficticios). Para verificar la web publicada:
+`demo:prueba` usa la API como un organizador y carga:
+- un torneo largo con C5 (terminado, con Copa de Oro y Plata y puntos acreditados), C6 (grupos en curso) y C7 (grupos armados);
+- un Satélite con su cuadro final acreditado;
+- un próximo torneo con la inscripción abierta;
+- una novedad.
+
+Se niega a correr si la dirección no muestra la franja «Entorno de prueba», y no duplica nada si se corre dos veces. Para verificar la web publicada:
 
 ```bash
 npm run check:links -- https://padel-time-prueba.<subdominio>.workers.dev --legacy
 ```
 
-Para descartar el entorno de prueba, borrá el Worker `padel-time-prueba`, la base `padel-time-prueba` y su espacio KV desde el panel de Cloudflare. Producción no se ve afectada.
+**Actualizar la versión de prueba** después de hacer cambios: `npm run deploy:prueba`. Aplica las migraciones nuevas y conserva los datos cargados.
+
+**Desactivar el entorno de prueba** al terminar la evaluación. Producción no se ve afectada:
+
+```bash
+npx wrangler delete --name padel-time-prueba
+```
+
+```bash
+npx wrangler d1 delete padel-time-prueba
+```
+
+```bash
+npx wrangler kv namespace delete --namespace-id <ID de KV de prueba>
+```
+
+También se puede hacer desde el panel de Cloudflare, en *Workers & Pages*, *D1* y *KV*.

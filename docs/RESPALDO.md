@@ -139,7 +139,7 @@ El entorno de prueba (`docs/DESPLIEGUE.md`, sección 12) tiene su propia base: s
 npx wrangler d1 execute DB --remote --config wrangler.jsonc --env prueba --file=padel-time-respaldo-AAAA-MM-DD_HH-MM.sql
 ```
 
-Hacelo sobre una base de prueba recién creada y migrada (`npm run deploy:prueba`, **sin** `db:seed:prueba`). El respaldo tiene datos reales: después de ensayar, vaciá o borrá esa base.
+Hacelo sobre una base de prueba recién creada y migrada (`npm run deploy:prueba`, **sin** `demo:prueba`). El respaldo tiene datos reales: después de ensayar, vaciá o borrá esa base.
 
 ## Archivo de la web anterior
 
