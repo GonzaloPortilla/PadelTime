@@ -57,13 +57,13 @@
   "env": {
     "prueba": {
       "name": "padel-time-prueba",
-      "kv_namespaces": [{ "binding": "MEDIA", "id": "11111111111111111111111111111111" }],
+      "kv_namespaces": [{ "binding": "MEDIA", "id": "e031f59037e94bfebdb2242e96b1f764" }],
       "d1_databases": [
         {
           "binding": "DB",
           "database_name": "padel-time-prueba",
           // Reemplazar por el ID que devuelve `npx wrangler d1 create padel-time-prueba`.
-          "database_id": "11111111-1111-1111-1111-111111111111",
+          "database_id": "d79ae255-fa9a-4281-8e07-295e1f38bfc7",
           "migrations_dir": "migrations"
         }
       ],
