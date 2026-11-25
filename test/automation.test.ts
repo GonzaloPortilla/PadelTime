@@ -282,3 +282,39 @@ describe("resguardos de la acreditación con fixture", () => {
     expect(p2.issues[0].message).toContain("Fixture → Puntos");
   });
 });
+
+describe("torneo con varias categorías: cada una pasa del fixture a los puntos por su cuenta", () => {
+  it("una categoría termina y se acredita desde el fixture mientras la otra sigue en grupos", async () => {
+    const { client, base, tid } = await demo(); // el demo crea el torneo con 4ta y 5ta
+    const ev = (await client.get(`/api/tournaments/${tid}`)).json.item;
+    const siblings = (await client.get(`/api/events/${ev.eventId}`)).json.item.tournaments as Json[];
+    const c5 = siblings.find((t) => t.categoryId === base.cab5.id)!;
+    // 5ta: tres parejas y grupo armado, sin resultados.
+    for (let i = 0; i < 3; i++) {
+      const p1 = (await client.post("/api/players", { firstName: `Cinco${i}`, lastName: "A", gender: "M", mainCategoryId: base.cab5.id })).json.item;
+      const p2 = (await client.post("/api/players", { firstName: `Cinco${i}`, lastName: "B", gender: "M", mainCategoryId: base.cab5.id })).json.item;
+      await client.post(`/api/tournaments/${c5.id}/teams`, { player1Id: p1.id, player2Id: p2.id });
+    }
+    let s5 = await fx(client, c5.id);
+    s5 = (await client.put(`/api/tournaments/${c5.id}/fixture/config`, { version: s5.version, config: { ...s5.config, groupCount: 1 } })).json.item;
+    s5 = (await client.put(`/api/tournaments/${c5.id}/fixture/groups`, { version: s5.version, groups: [s5.teams.map((t) => t.id)] })).json.item;
+
+    // 4ta: termina, se aplican las posiciones y se acredita.
+    const s4 = await playBrackets(client, tid);
+    const fp = await finalPreview(client, tid);
+    await client.post(`/api/tournaments/${tid}/fixture/final`, { version: s4.version, stageMap: fp.stageMap });
+    expect((await confirmCredit(client, tid)).status).toBe(201);
+
+    // 5ta sigue abierta: no se puede acreditar y no tiene puntos.
+    const p5 = (await client.get(`/api/tournaments/${c5.id}/preview`)).json;
+    expect(p5.canConfirm).toBe(false);
+    expect(p5.issues[0].code).toBe("fixture_pendiente");
+    const evNow = (await client.get(`/api/events/${ev.eventId}`)).json.item;
+    expect(evNow.status).toBe("en_curso");
+    expect(evNow.tournaments.map((t: Json) => [t.categoryId, t.status, t.creditedVersion])).toEqual([
+      [base.cab4.id, "finalizado", 1], [base.cab5.id, "en_curso", null],
+    ]);
+    const moved = await env.DB.prepare("SELECT DISTINCT tournament_id FROM point_movements").all();
+    expect(moved.results).toEqual([{ tournament_id: tid }]);
+  });
+});

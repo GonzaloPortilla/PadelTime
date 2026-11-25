@@ -135,7 +135,7 @@ describe("torneo con varias categorías", () => {
     const s5 = await groupsFor(client, c5!.id);
     await client.post(`/api/tournaments/${c5!.id}/fixture/publish`, { version: s5.version });
 
-    const list = await (await rawFetch("/torneos")).text();
+    const list = await (await rawFetch("/torneos?estado=historial")).text(); // armar el fixture lo pasa a "en curso"
     expect(list.split("Open Padel Time — Noviembre 2026").length - 1).toBe(1); // una sola tarjeta
     expect(list).toContain("C5 · C6 · C7 · C8");
     const cal = await (await rawFetch("/calendario?mes=2026-11")).text();

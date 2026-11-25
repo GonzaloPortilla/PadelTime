@@ -151,7 +151,8 @@ export function TournamentPage() {
   // El torneo general y todas sus categorías (cada una, una competencia independiente).
   const eventId = query.data?.eventId ?? null;
   const event = useQuery({
-    queryKey: [...keys.events, "detail", String(eventId)],
+    // Se vuelve a pedir cuando cambia el estado, la acreditación o las parejas de la categoría actual.
+    queryKey: [...keys.events, "detail", String(eventId), query.data?.status, query.data?.creditedVersion, query.data?.teamCount],
     queryFn: async () => (await api.get<{ item: TournamentEvent }>(`/events/${eventId}`)).item,
     enabled: eventId !== null,
   });
@@ -185,7 +186,7 @@ export function TournamentPage() {
       <nav className="-mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="Categorías del torneo">
         <div className="flex items-center gap-1.5">
           <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Categorías</span>
-          {(event.data?.tournaments ?? [t]).map((c) => (
+          {(event.data?.tournaments ?? [t]).map((x) => (x.id === t.id ? t : x)).map((c) => (
             <Link key={c.id} to={`/torneos/${c.id}${tab === "resumen" || (tab === "fixture" && c.type !== "largo") ? "" : `?tab=${tab}`}`} aria-current={c.id === t.id ? "page" : undefined}
               className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ring-inset transition-colors",
                 c.id === t.id ? "bg-brand-700 text-white ring-brand-700" : "bg-white text-slate-700 ring-slate-300 hover:bg-brand-50")}>

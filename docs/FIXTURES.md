@@ -134,9 +134,9 @@ Confirmado en el reglamento publicado (página Reglamentos):
 
 El fixture alimenta al **mismo** motor de puntuación y acreditación de siempre: no hay un segundo sistema de puntos.
 
-**Circuito completo de un torneo largo:**
+**Circuito completo de un torneo largo** (por categoría: cada una pasa del fixture a los puntos y se acredita por su cuenta, aunque las demás sigan en juego):
 
-1. Crear la competencia (Eventos).
+1. Crear el torneo (Torneos → Nuevo torneo) con sus categorías y entrar a la categoría.
 2. Registrar las parejas.
 3. Generar grupos y fixture. El torneo pasa solo a **En curso**.
 4. Cargar resultados.

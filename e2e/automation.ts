@@ -83,6 +83,8 @@ export async function automationCircuit(page: Page, opts: { mobile: boolean; pre
   await page.getByRole("button", { name: "Confirmar y acreditar puntos" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Acreditar puntos" }).click();
   await expect(page.getByText(/Se acreditaron \d+ puntos/)).toBeVisible();
+  // La pestaña de la categoría refleja el nuevo estado.
+  await expect(page.getByRole("navigation", { name: "Categorías del torneo" }).getByRole("link", { name: /Finalizado/ })).toBeVisible();
   await shot(page, "acreditado");
 
   // 12. Rankings públicos: el jugador de otra categoría principal suma en la suya; su compañero en la categoría del torneo.
