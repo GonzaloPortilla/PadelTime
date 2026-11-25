@@ -35,9 +35,45 @@
     "PBKDF2_ITERATIONS": "30000",
     // Sitios autorizados a incrustar las páginas públicas (/publico) en un iframe.
     // Google Sites sirve el contenido incrustado desde sites.google.com y *.googleusercontent.com.
-    "PUBLIC_FRAME_ANCESTORS": "https://sites.google.com https://*.googleusercontent.com https://www.padeltime.com.ar https://padeltime.com.ar"
+    "PUBLIC_FRAME_ANCESTORS": "https://sites.google.com https://*.googleusercontent.com https://www.padeltime.com.ar https://padeltime.com.ar",
+    // "produccion" o "prueba". En "prueba" la web muestra una franja de entorno de prueba y no se indexa.
+    "ENVIRONMENT": "produccion"
   },
   // Limpieza diaria de sesiones vencidas (06:17 UTC = 03:17 en Argentina). Gratis: hasta 5 cron por cuenta.
   "triggers": { "crons": ["17 6 * * *"] },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+
+  // Dominio oficial (Fase 11). NO está activo: se habilita recién cuando se autorice el lanzamiento
+  // (ver docs/DOMINIO.md). Con dominio propio, Cloudflare emite y renueva el certificado HTTPS solo.
+  // "routes": [
+  //   { "pattern": "padeltime.com.ar", "custom_domain": true },
+  //   { "pattern": "www.padeltime.com.ar", "custom_domain": true }
+  // ],
+
+  // ── Entorno de prueba independiente ──────────────────────────────────────────────────────────
+  // Mismo código, otro Worker (padel-time-prueba.<subdominio>.workers.dev), otra base y otro espacio de
+  // archivos: los datos de demostración nunca se mezclan con los reales. No se indexa en buscadores.
+  //   npm run deploy:prueba   ·   npm run db:seed:prueba
+  "env": {
+    "prueba": {
+      "name": "padel-time-prueba",
+      "kv_namespaces": [{ "binding": "MEDIA", "id": "11111111111111111111111111111111" }],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "padel-time-prueba",
+          // Reemplazar por el ID que devuelve `npx wrangler d1 create padel-time-prueba`.
+          "database_id": "11111111-1111-1111-1111-111111111111",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "vars": {
+        "SESSION_TTL_DAYS": "7",
+        "PBKDF2_ITERATIONS": "30000",
+        "PUBLIC_FRAME_ANCESTORS": "'none'",
+        "ENVIRONMENT": "prueba"
+      },
+      "triggers": { "crons": ["17 6 * * *"] }
+    }
+  }
 }

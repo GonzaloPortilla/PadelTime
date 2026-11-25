@@ -13,6 +13,7 @@ import { Badge, Card, CardHeader, ErrorState, Spinner } from "@/components/ui/mi
 import { GenderBadge, TournamentStatusBadge, TournamentTypeBadge } from "@/components/ui/badges";
 import { TournamentForm } from "@/components/forms/TournamentForm";
 import { TorneoForm } from "@/components/forms/TorneoForm";
+import { ResultFilesCard } from "./ResultFilesCard";
 import type { TournamentEvent } from "@shared/types";
 import { tournamentPath } from "@shared/site";
 import { useToast } from "@/components/ui/Toast";
@@ -118,6 +119,8 @@ function Summary({ t, onTab }: { t: Tournament; onTab: (k: TabKey) => void }) {
           </div>
         </Card>
       </div>
+
+      <ResultFilesCard key={t.id} t={t} />
 
       <ConfirmDialog open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Eliminar categoría"
         message="La categoría se eliminará del torneo (si era la única, se elimina el torneo). Si sólo no se va a jugar, conviene cancelarla para conservar el registro."

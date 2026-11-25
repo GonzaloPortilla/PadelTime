@@ -290,6 +290,25 @@ Detalle en [`docs/FIXTURES.md`](FIXTURES.md). Resumen técnico:
   - `fixtureCreditBlock` agrega un error a la previsualización y rechaza la confirmación si el fixture no terminó o no está aplicado.
 - **Sin cambios** en `shared/scoring.ts` ni en la lógica de acreditación, corrección y reversión. En `worker/routes/credits.ts` sólo se agregó el resguardo `fixtureCreditBlock`. El fixture le entrega al motor las mismas entradas que la carga manual.
 
+## 2 undecies. Lanzamiento (Fase 11)
+
+- **Migración 0010:** `tournaments.result_files` (archivos de resultados por categoría) y `site_redirects` (301 desde la web anterior, sembradas con sus 15 secciones), con triggers de versión pública.
+- **Web:**
+  - `publicApp.notFound` consulta `findRedirect` (exacta o por prefijo, ruta decodificada y en minúsculas) antes de responder 404;
+  - `resultFilesSection` muestra los archivos;
+  - calendario navegable de -3 a +2 años, y los meses que no son el actual llevan `noindex, follow`.
+- **API:**
+  - `PUT /api/tournaments/:id/files`;
+  - `/api/redirects` (escritura sólo administradores; destino siempre interno);
+  - `X-Robots-Tag: noindex` en toda la API;
+  - `mediaUsage` incluye los archivos de torneos.
+- **Medios:** `/media/<id>` usa la Cache API (con dominio propio): copia de borde de hasta 1 día, purgada al borrar.
+- **Entornos:**
+  - `ENVIRONMENT` = `produccion` | `prueba`; en prueba, franja, `noindex` y `robots.txt` bloqueado;
+  - `env.prueba` en `wrangler.jsonc`.
+  - Con `@cloudflare/vite-plugin` el entorno se elige al compilar (`CLOUDFLARE_ENV`): `scripts/deploy.mjs` compila, verifica `dist/padel_time/wrangler.json` y aplica las migraciones con `--config wrangler.jsonc [--env]`. Los comandos remotos usan siempre la configuración explícita.
+- **Herramientas:** `scripts/check-links.mjs` (rastreo y direcciones viejas) y `scripts/migrar-web-anterior.mjs` (descargar, plantilla, subir).
+
 ## 3. API
 
 Todas las respuestas son JSON. Los errores tienen la forma `{ error: { code, message, fields? } }`, con los mensajes en español.

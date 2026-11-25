@@ -1,6 +1,6 @@
 # Limitaciones conocidas
 
-Estado al cierre de la Fase 10 (noviembre de 2026). Ninguna afecta la integridad de los puntos.
+Estado al cierre de la Fase 11, preparación del lanzamiento (noviembre de 2026). Ninguna afecta la integridad de los puntos.
 
 ## Infraestructura gratuita
 
@@ -10,6 +10,7 @@ Estado al cierre de la Fase 10 (noviembre de 2026). Ninguna afecta la integridad
 | **100.000 solicitudes por día** | Un pico muy grande de visitas a los rankings públicos (decenas de miles en un día) podría agotar el cupo. La app y los rankings dejarían de responder hasta las 21:00 de Argentina. No hay cobro. | Uso esperado: muy por debajo. Las páginas públicas responden 304 (sin recalcular) cuando no cambiaron. Con dominio propio, la caché de Cloudflare absorbe más tráfico. |
 | **Time Travel de 7 días** | Para volver a un estado de hace más de una semana hace falta un respaldo descargado. | Respaldo semanal desde la app (`docs/RESPALDO.md`). |
 | **Sin alta disponibilidad garantizada** | Una caída de Cloudflare deja la app sin servicio mientras dure. | Los datos se conservan. Exportaciones a Excel como plan B para publicar. |
+| **Picos de tráfico** | El plan gratuito no cobra excedentes, pero tampoco los atiende: superadas las 100.000 solicitudes diarias, la web se interrumpe hasta las 21:00. Cada foto de la biblioteca mostrada cuenta como una solicitud. | Detalle y márgenes en `docs/COSTOS.md`. |
 | **Sin correo electrónico** | No hay "olvidé mi contraseña" por mail: los servicios de envío confiables tienen costo o requieren configurar un dominio. | Un administrador resetea la contraseña desde **Usuarios**, o por terminal con `npm run user:create -- --reset`. |
 
 ## Gestor de contenidos (Fase 8)
@@ -53,7 +54,19 @@ Estado al cierre de la Fase 10 (noviembre de 2026). Ninguna afecta la integridad
 | **Google Sites** | No modifiqué Google Sites. La integración consiste en pegar la dirección o el código de cada ranking (`docs/PUBLICACION.md`). Si Google cambia los dominios desde donde sirve el contenido incrustado, habría que actualizar `PUBLIC_FRAME_ANCESTORS`. |
 | **Idioma y zona horaria** | Interfaz sólo en español rioplatense. Fechas en horario de Argentina. |
 
+## Lanzamiento (Fase 11)
+
+| Limitación | Detalle |
+|---|---|
+| **Torneos históricos como imagen** | Los resultados de la web anterior se conservan como archivos (imágenes), no como datos: no suman al ranking ni se pueden buscar por jugador. Pasarlos a datos requiere cargarlos a mano o tener las planillas originales. |
+| **Fechas históricas** | La web anterior no tiene las fechas de sus torneos: hay que indicarlas al crearlos. |
+| **Imágenes no descargables** | Una imagen de la web anterior (Winter Time Cup, cuadro final) no se puede descargar: hace falta el archivo original. |
+| **Meses del calendario** | Navegables desde 3 años antes hasta 2 años después del actual. Sólo el mes actual se indexa en buscadores. |
+
 ## Probado y no probado
+
+Detalle completo en `docs/INFORME_PRUEBAS.md`.
+
 
 - **Probado automáticamente** en Chromium de escritorio y en Pixel 7 emulado (Playwright).
 - **No probado en dispositivos físicos** ni en Safari de iPhone, aunque la app usa sólo funciones estándar. Conviene una prueba rápida en un iPhone real después de publicar.

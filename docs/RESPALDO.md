@@ -25,7 +25,7 @@ Cuándo hacerlo:
 
 Qué tiene en cuenta:
 
-- **Contenido:** jugadores, categorías y divisiones, temporadas, torneos, parejas, puntuaciones, acreditaciones, todos los movimientos de puntos, importaciones, auditoría, usuarios y configuración. No incluye las sesiones abiertas (al restaurar hay que volver a ingresar).
+- **Contenido:** jugadores, categorías y divisiones, temporadas, torneos y sus categorías, parejas, puntuaciones, acreditaciones, todos los movimientos de puntos, importaciones, fixtures (grupos, partidos, historial y lo publicado), contenidos de la web, redirecciones, auditoría, usuarios y configuración. No incluye las sesiones abiertas (al restaurar hay que volver a ingresar).
 - **Es confidencial:** tiene teléfonos, correos y documentos de jugadores, y las contraseñas *cifradas* de los organizadores. No lo compartas ni lo subas a carpetas públicas.
 - **Es seguro:** descargarlo no modifica nada. Queda registrado en la auditoría quién lo descargó.
 
@@ -130,6 +130,20 @@ npx wrangler d1 execute DB --local --persist-to .wrangler/ensayo --command="SELE
 ```
 
 ---
+
+### Caso E — Ensayo en el entorno de prueba
+
+El entorno de prueba (`docs/DESPLIEGUE.md`, sección 12) tiene su propia base: se puede restaurar ahí un respaldo real para verificarlo, sin tocar producción.
+
+```bash
+npx wrangler d1 execute DB --remote --config wrangler.jsonc --env prueba --file=padel-time-respaldo-AAAA-MM-DD_HH-MM.sql
+```
+
+Hacelo sobre una base de prueba recién creada y migrada (`npm run deploy:prueba`, **sin** `db:seed:prueba`). El respaldo tiene datos reales: después de ensayar, vaciá o borrá esa base.
+
+## Archivo de la web anterior
+
+`node scripts/migrar-web-anterior.mjs descargar` guarda una copia local de todas las imágenes de resultados de la web de Google Sites (`docs/MIGRACION_CONTENIDOS.md`). Conviene conservar esa carpeta, comprimida y fuera del repositorio, como archivo histórico antes de dar de baja el sitio anterior.
 
 ## Ante una falla de Cloudflare
 

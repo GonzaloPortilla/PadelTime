@@ -322,9 +322,20 @@ function resultsTable(results: PublicResult[]): Raw {
 </table></div><p class="note">Puntos que suma cada integrante al ranking de su categoría.</p>`;
 }
 
+/** Cuadros, tablas o fixtures que sólo existen como imagen o PDF (torneos históricos de la web anterior). */
+function resultFilesSection(t: PublicTournament, media: MediaMap): Raw {
+  const files = t.resultFiles.map((f) => ({ ...f, m: media.get(f.mediaId) })).filter((f) => f.m);
+  if (!files.length) return h``;
+  return h`<section class="result-files" id="archivos"><h2>Resultados (archivo)</h2>
+<p class="note">Material publicado originalmente como imagen o documento: se conserva tal cual.</p>
+<div class="rf-grid">${files.map((f) => f.m!.kind === "imagen"
+    ? h`<figure class="card"><a href="${f.m!.url}" target="_blank" rel="noopener"><img src="${f.m!.url}" alt="${f.m!.alt || `${f.label} · ${t.name} ${t.categoryName}`}" loading="lazy"${f.m!.width ? raw(` width="${f.m!.width}" height="${f.m!.height}"`) : ""}></a><figcaption>${f.label}</figcaption></figure>`
+    : h`<a class="card pad doc" href="${f.m!.url}" target="_blank" rel="noopener"><b>${f.label}</b><small>PDF · ${fmtSize(f.m!.bytes)}</small></a>`)}</div></section>`;
+}
+
 export function tournamentPage(
   ctx: PageCtx, t: PublicTournament, data: { teams: PublicTeam[]; results: PublicResult[] },
-  extra: { fixture?: { data: PublicFixture; publishedAt: string } | null; siblings?: PublicTournament[] } = {},
+  extra: { fixture?: { data: PublicFixture; publishedAt: string } | null; siblings?: PublicTournament[]; files?: MediaMap } = {},
 ): string {
   const cat = categoryLabel(ctx, t);
   const canRegister = t.registrationOpen && (t.status === "programado" || t.status === "en_curso");
@@ -370,7 +381,8 @@ ${t.status === "finalizado" ? h`<p class="note">El resultado final se publica cu
   <p class="note"><a href="/torneos">← Volver a torneos</a></p>
 </aside>
 </div>
-${extra.fixture ? fixtureSection(extra.fixture.data, extra.fixture.publishedAt) : ""}`;
+${extra.fixture ? fixtureSection(extra.fixture.data, extra.fixture.publishedAt) : ""}
+${resultFilesSection(t, extra.files ?? new Map())}`;
   const location = ctx.site.venueName || t.venue
     ? { "@type": "Place", name: t.venue || ctx.site.venueName, ...(ctx.site.address ? { address: ctx.site.address } : {}) }
     : undefined;
@@ -389,6 +401,13 @@ ${extra.fixture ? fixtureSection(extra.fixture.data, extra.fixture.publishedAt) 
 
 // ─────────────────────────── Calendario ───────────────────────────
 interface CalItem { date: string; endDate: string; title: string; href: string | null; kind: string; label: string; time: string | null }
+
+/** Meses navegables del calendario: desde 3 años antes hasta 2 años después del año actual. */
+export function inCalendarRange(ctx: PageCtx, month: string): boolean {
+  const year = Number(ctx.today.slice(0, 4));
+  const y = Number(month.slice(0, 4));
+  return y >= year - 3 && y <= year + 2;
+}
 
 export function calendarPage(ctx: PageCtx, month: string, tournaments: PublicTournament[], events: PublicEvent[], intro: SitePage | null = null, opts: RenderOpts = {}): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
@@ -416,7 +435,7 @@ export function calendarPage(ctx: PageCtx, month: string, tournaments: PublicTou
     return x.item.href ? h`<a class="ev ${x.item.kind}" href="${x.item.href}" title="${text}">${text}</a>` : h`<span class="ev ${x.item.kind}" title="${text}">${text}</span>`;
   };
   const body = h`${introBlocks(intro, opts)}
-<div class="cal-nav"><a class="btn" href="/calendario?mes=${prev}" rel="nofollow">← <span class="hide-sm">Anterior</span></a><b>${fmtMonthYear(first)}</b><a class="btn" href="/calendario?mes=${next}" rel="nofollow"><span class="hide-sm">Siguiente</span> →</a></div>
+<div class="cal-nav">${inCalendarRange(ctx, prev) ? h`<a class="btn" href="/calendario?mes=${prev}" rel="nofollow">← <span class="hide-sm">Anterior</span></a>` : h`<span></span>`}<b>${fmtMonthYear(first)}</b>${inCalendarRange(ctx, next) ? h`<a class="btn" href="/calendario?mes=${next}" rel="nofollow"><span class="hide-sm">Siguiente</span> →</a>` : h`<span></span>`}</div>
 <div class="cal-desktop"><table class="cal" aria-label="Calendario de ${fmtMonthYear(first)}">
 <thead><tr>${["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => h`<th scope="col">${d}</th>`)}</tr></thead>
 <tbody>${weeks.map((w) => h`<tr>${w.map((d) => (d ? h`<td class="${d === ctx.today ? "today" : ""}"><span class="d">${fmtDay(d)}</span>${(byDay.get(d) ?? []).map(chip)}</td>` : h`<td class="out"></td>`))}</tr>`)}</tbody>
@@ -429,6 +448,8 @@ ${items.length ? h`<div class="card agenda">${items.map((it) => {
 `;
   return layout(ctx, {
     title: `Calendario ${fmtMonthYear(first)}`, section: "calendario", body, canonical: month === ctx.today.slice(0, 7) ? "/calendario" : `/calendario?mes=${month}`,
+    // Sólo el mes actual se indexa: los demás son navegación (evita miles de páginas casi vacías).
+    noindex: month !== ctx.today.slice(0, 7),
     description: `Calendario de ${ctx.title}: torneos, canchas abiertas y eventos de ${fmtMonthYear(first)}.`,
     heading: { kicker: ctx.title, title: intro?.title ?? "Calendario", sub: intro?.summary ?? undefined },
   });

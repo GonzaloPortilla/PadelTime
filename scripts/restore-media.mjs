@@ -4,7 +4,7 @@
  * Sube cada archivo al espacio KV "MEDIA" con la misma clave (id) y sus metadatos, así las páginas
  * restauradas desde el respaldo .sql vuelven a mostrar sus imágenes.
  *
- * Uso:  node scripts/restore-media.mjs padel-time-multimedia-AAAA-MM-DD.zip [--local]
+ * Uso:  node scripts/restore-media.mjs padel-time-multimedia-AAAA-MM-DD.zip [--local] [--env prueba]
  * Sin --local sube a producción (requiere `npx wrangler login`).
  */
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -20,6 +20,8 @@ if (!zipPath) {
   process.exit(1);
 }
 const local = flags.includes("--local");
+const envIdx = flags.indexOf("--env");
+const envArgs = envIdx >= 0 && flags[envIdx + 1] ? ["--env", flags[envIdx + 1]] : [];
 const files = unzipSync(new Uint8Array(readFileSync(zipPath)));
 const manifest = JSON.parse(strFromU8(files["manifest.json"]));
 const wrangler = fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url));
@@ -32,7 +34,7 @@ try {
     const tmp = join(dir, m.id);
     writeFileSync(tmp, data);
     execFileSync(process.execPath, [wrangler, "kv", "key", "put", m.id, "--binding", "MEDIA", "--path", tmp,
-      "--metadata", JSON.stringify({ mime: m.mime, filename: m.filename }), local ? "--local" : "--remote"], { stdio: "inherit" });
+      "--metadata", JSON.stringify({ mime: m.mime, filename: m.filename }), local ? "--local" : "--remote", "--config", "wrangler.jsonc", ...envArgs], { stdio: "inherit" });
     ok++;
   }
 } finally {

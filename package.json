@@ -12,16 +12,20 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
     "db:seed:local": "wrangler d1 execute DB --local --file=seed/demo.sql",
     "user:create": "node scripts/create-user.mjs",
     "cf-typegen": "wrangler types --strict-vars=false worker/worker-configuration.d.ts",
-    "deploy": "node scripts/preflight.mjs && npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "deploy": "node scripts/deploy.mjs",
     "postinstall": "node scripts/copy-ocr-assets.mjs",
     "predev": "node scripts/copy-ocr-assets.mjs",
     "prebuild": "node scripts/copy-ocr-assets.mjs",
     "preflight": "node scripts/preflight.mjs",
-    "db:backup:remote": "wrangler d1 export DB --remote --output=respaldo-padel-time.sql"
+    "db:backup:remote": "wrangler d1 export DB --remote --config wrangler.jsonc --output=respaldo-padel-time.sql",
+    "preflight:prueba": "node scripts/preflight.mjs --env prueba",
+    "deploy:prueba": "node scripts/deploy.mjs --env prueba",
+    "db:seed:prueba": "wrangler d1 execute DB --remote --config wrangler.jsonc --env prueba --file=seed/demo.sql",
+    "check:links": "node scripts/check-links.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.108.0",

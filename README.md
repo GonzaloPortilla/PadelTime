@@ -4,10 +4,13 @@ Aplicación web para gestionar los torneos y rankings de Padel Time: jugadores, 
 
 **Costo operativo mensual: USD 0.** Corre íntegramente en el plan gratuito de Cloudflare (Workers + D1 + Static Assets), sin servicios pagos.
 
-> Estado: **Fase 10 (automatización integral: fixture → puntos → ranking)**. La web pública está en la raíz (`/`) y el panel en **`/admin`**: **Contenidos web** para editar la web, **Torneos con varias categorías** (una pestaña por categoría) y la pestaña **Fixture** de cada torneo largo (grupos, partidos, tablas, Copa de Oro / Plata y, al terminar, posiciones finales → acreditación → ranking). Todavía **no está publicada**.
+> Estado: **Fase 11 — lista para producción** (falta tu autorización para publicar). La web pública está en la raíz (`/`) y el panel en **`/admin`**. Informe y pasos exactos de publicación: [`docs/PRODUCCION.md`](docs/PRODUCCION.md). Todavía **no está publicada** y el dominio no se tocó.
 >
 > | Documento | Para quién |
 > |---|---|
+> | [`docs/PRODUCCION.md`](docs/PRODUCCION.md) | **Fase 11:** informe de preparación, pasos exactos de publicación y autorizaciones |
+> | [`docs/MIGRACION_CONTENIDOS.md`](docs/MIGRACION_CONTENIDOS.md) · [`docs/DOMINIO.md`](docs/DOMINIO.md) · [`docs/COSTOS.md`](docs/COSTOS.md) · [`docs/INFORME_PRUEBAS.md`](docs/INFORME_PRUEBAS.md) | Migración desde la web anterior, dominio, costos, informe de pruebas |
+> | [`docs/ACREDITACION.md`](docs/ACREDITACION.md) · [`docs/CORRECCIONES.md`](docs/CORRECCIONES.md) | Guías de acreditación de puntos y de correcciones |
 > | [`docs/FIXTURES.md`](docs/FIXTURES.md) | **Fases 9 y 10:** eventos, grupos, resultados, tablas, Copa de Oro / Plata, conflictos, publicación y del fixture a los puntos y el ranking |
 > | [`docs/CMS.md`](docs/CMS.md) | **Fase 8:** gestor de contenidos, multimedia, permisos, edición simultánea e historial |
 > | [`docs/WEB_PUBLICA.md`](docs/WEB_PUBLICA.md) | **Fase 7:** rutas, contenidos y SEO de la web pública, cambios en el panel |

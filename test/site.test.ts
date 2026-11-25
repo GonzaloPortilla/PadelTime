@@ -41,7 +41,9 @@ describe("web pública · acceso libre", () => {
       expect(res.status, path).toBe(200);
       expect(res.headers.get("content-type"), path).toContain("text/html");
       expect(res.headers.get("x-robots-tag"), path).toBeNull();
-      expect(html, path).not.toMatch(/noindex/);
+      // Fase 11: los meses del calendario distintos del actual son navegación (no se indexan, se siguen).
+      if (path.includes("mes=")) expect(html, path).toContain('<meta name="robots" content="noindex, follow">');
+      else expect(html, path).not.toMatch(/noindex/);
       expect(html, path).toMatch(/<title>[^<]+<\/title>/);
       expect(html, path).toMatch(/<meta name="description" content="[^"]{10,}">/);
       expect(html, path).toContain('<link rel="canonical" href="http://localhost/');

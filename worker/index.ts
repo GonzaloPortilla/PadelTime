@@ -55,9 +55,23 @@ export default {
     const media = /^\/media\/([0-9a-f-]{36})(?:\/[^/]*)?$/.exec(pathname);
     if (media && (request.method === "GET" || request.method === "HEAD")) {
       if (request.headers.get("if-none-match") === `"${media[1]}"`) return new Response(null, { status: 304, headers: { ETag: `"${media[1]}"` } });
+      // Con dominio propio, la caché de Cloudflare evita leer KV en cada visita (cupo gratis: 100.000 lecturas/día).
+      // En *.workers.dev la Cache API no guarda nada y se lee KV directamente (sin costo, sólo cuenta del cupo).
+      const cache = typeof caches !== "undefined" ? (caches as unknown as { default?: Cache }).default : undefined;
+      const cacheKey = new Request(`${url.origin}/media/${media[1]}`);
+      const hit = request.method === "GET" && cache ? await cache.match(cacheKey).catch(() => undefined) : undefined;
+      if (hit) return hit;
       const file = await mediaStore(env).get(media[1]!);
       if (!file) return new Response("Archivo no encontrado", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
-      return new Response(request.method === "HEAD" ? null : file.body, { headers: { ...mediaHeaders(file), ETag: `"${media[1]}"` } });
+      const res = new Response(request.method === "HEAD" ? null : file.body, { headers: { ...mediaHeaders(file), ETag: `"${media[1]}"` } });
+      if (request.method === "GET" && cache) {
+        // La copia en la caché de Cloudflare dura como máximo un día (al borrar un archivo también se purga).
+        const copy = new Response(res.clone().body, res);
+        copy.headers.set("Cache-Control", "public, max-age=31536000, s-maxage=86400");
+        const put = cache.put(cacheKey, copy).catch(() => undefined);
+        try { ctx.waitUntil(put); } catch { await put; }
+      }
+      return res;
     }
     const legacy = legacyAdminPath(pathname);
     if (legacy) return Response.redirect(`${url.origin}${legacy}${url.search}`, 301);

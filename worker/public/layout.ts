@@ -26,6 +26,8 @@ export interface PageCtx {
   hiddenPages: string[];
   /** Vista previa del CMS (contenido sin publicar, sólo para organizadores). */
   preview?: boolean;
+  /** Entorno de prueba (ENVIRONMENT = "prueba"): franja visible y sin indexar. */
+  testEnv?: boolean;
 }
 
 export type Section = "inicio" | "torneos" | "rankings" | "calendario" | "reglamentos" | "liga" | "cancha-abierta" | "premios" | "contacto" | "novedades";
@@ -104,6 +106,8 @@ export interface LayoutOpts {
   canonical?: string;
   jsonLd?: Record<string, unknown>;
   ogImage?: string;
+  /** No indexar esta página (los enlaces se siguen). */
+  noindex?: boolean;
 }
 
 /** JSON-LD dentro de <script>: se neutraliza "</" para que ningún dato pueda cerrar la etiqueta. */
@@ -137,7 +141,7 @@ export function layout(ctx: PageCtx, o: LayoutOpts): string {
 <meta property="og:image" content="${ogImage}">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#0f5a93">
-${ctx.preview ? raw('<meta name="robots" content="noindex, nofollow">') : ""}
+${ctx.preview || ctx.testEnv ? raw('<meta name="robots" content="noindex, nofollow">') : o.noindex ? raw('<meta name="robots" content="noindex, follow">') : ""}
 <link rel="icon" href="/brand/favicon-64.png" type="image/png">
 <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
 <link rel="preload" href="/pub/fonts/oswald-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -146,6 +150,7 @@ ${ctx.preview ? raw('<meta name="robots" content="noindex, nofollow">') : ""}
 ${o.jsonLd ? jsonLdTag(o.jsonLd) : ""}
 </head>
 <body class="${ctx.embed ? "embed" : ""}">
+${ctx.testEnv ? h`<div class="preview-bar test-env" role="status">Entorno de prueba · Datos de demostración, no oficiales</div>` : ""}
 ${ctx.preview ? h`<div class="preview-bar" role="status">Vista previa · Este contenido todavía no está publicado. Cerrá esta pestaña para volver al panel.</div>` : ""}
 ${ctx.embed ? h`<div class="stripe" aria-hidden="true"></div>` : h`<a class="skip" href="#contenido">Saltar al contenido</a>
 ${announce}

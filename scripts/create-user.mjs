@@ -4,7 +4,7 @@
  * el primer administrador, ya que la aplicación no tiene registro público.
  *
  * Uso:
- *   npm run user:create -- --username admin --name "Nombre Apellido" [--role admin|organizador] [--remote] [--reset]
+ *   npm run user:create -- --username admin --name "Nombre Apellido" [--role admin|organizador] [--remote] [--env prueba] [--reset]
  *
  * La contraseña se pide por consola sin mostrarse (o se toma de PADEL_PASSWORD para uso no interactivo).
  */
@@ -29,6 +29,7 @@ const { values: args } = parseArgs({
     reset: { type: "boolean", default: false },
     iterations: { type: "string" },
     "persist-to": { type: "string" },
+    env: { type: "string" },
   },
 });
 
@@ -78,14 +79,15 @@ const sql = args.reset
   : `INSERT INTO users (username, display_name, password_hash, role) VALUES (${q(username)}, ${q(displayName)}, ${q(stored)}, ${q(args.role)});`;
 
 const target = args.remote ? "--remote" : "--local";
-console.log(`\n→ ${args.reset ? "Reseteando contraseña de" : "Creando"} "${username}" en la base ${args.remote ? "REMOTA (producción)" : "local"}…`);
+console.log(`\n→ ${args.reset ? "Reseteando contraseña de" : "Creando"} "${username}" en la base ${args.remote ? (args.env ? `REMOTA (entorno ${args.env})` : "REMOTA (producción)") : "local"}…`);
 // El SQL va en un archivo temporal y wrangler se ejecuta directamente con Node (sin pasar por
 // la consola del sistema), así funciona igual en Windows, macOS y Linux.
 const wranglerBin = fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url));
 const tmp = mkdtempSync(join(tmpdir(), "padel-time-"));
 const sqlFile = join(tmp, "user.sql");
 writeFileSync(sqlFile, sql, "utf8");
-const extra = args["persist-to"] && !args.remote ? ["--persist-to", args["persist-to"]] : [];
+// Siempre con la configuración explícita (no la de la última compilación): producción o --env prueba.
+const extra = [...(args["persist-to"] && !args.remote ? ["--persist-to", args["persist-to"]] : []), "--config", "wrangler.jsonc", ...(args.env ? ["--env", args.env] : [])];
 let res;
 try {
   res = spawnSync(process.execPath, [wranglerBin, "d1", "execute", "DB", target, ...extra, "--yes", "--file", sqlFile], {

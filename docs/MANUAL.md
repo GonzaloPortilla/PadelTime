@@ -41,7 +41,10 @@ Guía práctica para usar Padel Time desde la compu o el celular. No hace falta 
 
 ### 3.1 Crear el torneo
 
-**Torneos → Nuevo torneo:** nombre, tipo (*largo* o *americano*), temporada, categoría, división (opcional) y fechas. Después, en **Resumen**, tocá **Iniciar torneo**.
+**Torneos → Nuevo torneo:** nombre, tipo (*largo* o *americano*), temporada, fechas, información pública y las **categorías participantes**, con casillas. Se crea un torneo con una pestaña por categoría.
+
+- En cada categoría: en **Resumen**, tocá **Iniciar torneo**. En un torneo largo con fixture, armar el fixture lo inicia solo.
+- Para torneos históricos que sólo tienen imágenes de resultados: **Resumen → Archivos de resultados** (ver `docs/MIGRACION_CONTENIDOS.md`).
 
 ### 3.2 Configurar los puntos
 

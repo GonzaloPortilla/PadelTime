@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronRight, FileText, Globe, Handshake, Images, Megaphone, Newspaper, Plus, Settings2, Trash2 } from "lucide-react";
+import { CalendarDays, ChevronRight, FileText, Globe, Handshake, Images, Megaphone, Newspaper, Plus, Settings2, Trash2, Shuffle } from "lucide-react";
 import type { ContentStatus, PageContent, PostContent } from "@shared/site";
 import { api } from "@/lib/api";
 import type { PageDetail, PostDetail } from "@/lib/cms";
@@ -41,12 +41,13 @@ export function WebHomePage() {
     { to: "/web/patrocinadores", icon: Handshake, title: "Patrocinadores", text: "Logos y enlaces de quienes acompañan." },
     { to: "/web/calendario", icon: CalendarDays, title: "Calendario", text: "Canchas abiertas y otros eventos." },
     { to: "/web/datos", icon: Settings2, title: "Datos de la web", text: "WhatsApp, Instagram, sede y aviso destacado." },
+    { to: "/web/redirecciones", icon: Shuffle, title: "Redirecciones", text: "Direcciones de la web anterior → web nueva." },
   ];
   return (
     <>
       <PageHeader title="Contenidos de la web" description="Todo lo que se ve en la web pública, sin programar. Los torneos, resultados y rankings se siguen cargando en sus secciones."
         actions={<a href="/" target="_blank" rel="noopener" className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"><Globe className="size-4" /> Ver la web</a>} />
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {tools.map((t) => (
           <Link key={t.to} to={t.to} className="group rounded-xl bg-white p-4 ring-1 ring-slate-200 transition hover:ring-brand-400">
             <t.icon className="size-5 text-brand-700" />

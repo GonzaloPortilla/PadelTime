@@ -49,6 +49,8 @@ export interface PublicTournament {
   teamCount: number; credited: boolean;
   eventId: number | null; eventName: string | null;
   categoryLevel: number;
+  /** Archivos de resultados (cuadros históricos en imagen o PDF). */
+  resultFiles: { mediaId: string; label: string }[];
   /** En un torneo con varias categorías: todas sus competencias publicadas (ver groupByEvent). */
   competitions?: PublicTournament[];
 }
@@ -57,7 +59,7 @@ interface TRow {
   id: number; name: string; type: TournamentType; series: Series | null; status: TournamentStatus; start_date: string; end_date: string; venue: string | null;
   season_id: number; season_name: string; season_year: number; category_id: number; category_name: string; gender: Gender;
   division_id: number | null; division_name: string | null; featured: number; public_description: string | null; prize_info: string | null;
-  registration_open: number; team_count: number; credited: number; event_id: number | null; event_name: string | null; category_level: number;
+  registration_open: number; team_count: number; credited: number; event_id: number | null; event_name: string | null; category_level: number; result_files: string;
 }
 
 const T_SELECT = `
@@ -67,19 +69,28 @@ const T_SELECT = `
          t.featured, t.public_description, t.prize_info, t.registration_open,
          (SELECT COUNT(*) FROM tournament_teams tt WHERE tt.tournament_id = t.id) AS team_count,
          EXISTS (SELECT 1 FROM tournament_credits cr WHERE cr.tournament_id = t.id AND cr.status = 'vigente') AS credited,
-         t.event_id, (SELECT e.name FROM tournament_events e WHERE e.id = t.event_id) AS event_name
+         t.event_id, (SELECT e.name FROM tournament_events e WHERE e.id = t.event_id) AS event_name, t.result_files
     FROM tournaments t
     JOIN seasons s ON s.id = t.season_id
     JOIN categories c ON c.id = t.category_id
     LEFT JOIN divisions d ON d.id = t.division_id
    WHERE t.public_visible = 1 AND s.public_visible = 1`;
 
+const parseFiles = (raw: string | null): { mediaId: string; label: string }[] => {
+  try {
+    const v = JSON.parse(raw ?? "[]");
+    return Array.isArray(v) ? v.filter((f) => f && typeof f.mediaId === "string" && typeof f.label === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
 const mapT = (r: TRow): PublicTournament => ({
   id: r.id, name: r.name, type: r.type, series: r.series, status: r.status, startDate: r.start_date, endDate: r.end_date, venue: r.venue,
   seasonId: r.season_id, seasonName: r.season_name, seasonYear: r.season_year,
   categoryId: r.category_id, categoryName: r.category_name, gender: r.gender, divisionId: r.division_id, divisionName: r.division_name,
   featured: r.featured === 1, description: r.public_description, prizeInfo: r.prize_info, registrationOpen: r.registration_open === 1,
-  teamCount: r.team_count, credited: r.credited === 1, eventId: r.event_id, eventName: r.event_name, categoryLevel: r.category_level,
+  teamCount: r.team_count, credited: r.credited === 1, eventId: r.event_id, eventName: r.event_name, categoryLevel: r.category_level, resultFiles: parseFiles(r.result_files),
 });
 
 /**
@@ -225,4 +236,18 @@ export async function loadPublicFixture(db: D1Database, tournamentId: number): P
   } catch {
     return null;
   }
+}
+
+// ─────────────────────────── Redirecciones de la web anterior (Fase 11) ───────────────────────────
+/** Destino 301 para una dirección que no existe en la web nueva (exacta, o por prefijo para subpáginas). */
+export async function findRedirect(db: D1Database, pathname: string): Promise<string | null> {
+  let path = pathname;
+  try { path = decodeURIComponent(pathname); } catch { /* se usa tal cual */ }
+  path = (path.replace(/\/+$/, "") || "/").toLowerCase();
+  const r = await db.prepare(
+    `SELECT to_path FROM site_redirects
+      WHERE from_path = ?1 OR (prefix = 1 AND substr(?1, 1, length(from_path) + 1) = from_path || '/')
+      ORDER BY length(from_path) DESC LIMIT 1`,
+  ).bind(path).first<{ to_path: string }>();
+  return r?.to_path ?? null;
 }

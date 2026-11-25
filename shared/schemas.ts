@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SERIES } from "./site";
+import { MEDIA_ID, SERIES } from "./site";
 import {
   CATEGORY_CHANGE_TYPES,
   MOVEMENT_KINDS,
@@ -421,3 +421,27 @@ export const tournamentEventSchema = z
   .refine((e) => e.endDate >= e.startDate, { message: "La fecha de fin debe ser posterior al inicio", path: ["endDate"] })
   .refine((e) => new Set(e.competitions.map((c) => `${c.categoryId}:${c.divisionId ?? 0}`)).size === e.competitions.length, { message: "Hay categorías repetidas", path: ["competitions"] });
 export type TournamentEventInput = z.input<typeof tournamentEventSchema>;
+
+// ─── Fase 11: lanzamiento ───
+export const resultFilesSchema = z.object({
+  files: z.array(z.object({
+    mediaId: z.string().regex(MEDIA_ID, "Archivo inválido"),
+    label: trimmed(60).min(1, "Poné un título (p. ej. Fixture, Tabla, Copa de Oro)"),
+  })).max(30, "Máximo 30 archivos por categoría"),
+});
+
+/** Dirección de la web: empieza con "/", sin espacios ni "//" (nunca un sitio externo). */
+const sitePath = (label: string) => z.string().trim().min(1, `${label} es obligatoria`).max(300)
+  .refine((v) => v.startsWith("/") && !v.startsWith("//") && !/\s/.test(v) && !/^\/(api|admin|media)(\/|$)/i.test(v), { message: `${label}: tiene que ser una dirección de la web que empiece con /` });
+
+export const redirectSchema = z.object({
+  fromPath: sitePath("La dirección anterior").transform((v) => {
+    let p = v;
+    try { p = decodeURIComponent(v); } catch { /* se deja como está */ }
+    p = p.split("?")[0]!.replace(/\/+$/, "") || "/";
+    return p.toLowerCase();
+  }),
+  toPath: sitePath("La dirección nueva"),
+  prefix: z.boolean().default(false),
+  note: optionalText(200),
+}).refine((r) => r.fromPath !== "/", { message: "La portada no se puede redirigir", path: ["fromPath"] });

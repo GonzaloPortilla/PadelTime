@@ -1,6 +1,6 @@
 # Puesta en producción de Padel Time
 
-Esta guía cubre la publicación en Cloudflare (plan gratuito, USD 0 por mes). Ninguno de estos pasos se ejecutó todavía: **la app no está publicada** hasta que alguien con la cuenta de Cloudflare de Padel Time siga estos pasos.
+Esta guía cubre la publicación en Cloudflare (plan gratuito, USD 0 por mes). Ninguno de estos pasos se ejecutó todavía: **la app no está publicada** hasta que alguien con la cuenta de Cloudflare de Padel Time siga estos pasos. Se recomienda publicar primero el **entorno de prueba** (sección 12). El resumen de lanzamiento está en [`PRODUCCION.md`](PRODUCCION.md).
 
 Los comandos funcionan igual en PowerShell (Windows), macOS y Linux, desde la carpeta del proyecto.
 
@@ -80,10 +80,12 @@ npm run deploy
 
 Este comando hace, en orden:
 
-1. Revisa la configuración (`preflight`).
-2. Compila la app (`build`) y verifica los tipos.
-3. Aplica las **migraciones** pendientes a la base de producción (`wrangler d1 migrations apply DB --remote`). Las migraciones sólo agregan tablas, columnas e índices: nunca borran datos. Cloudflare recuerda cuáles ya se aplicaron.
-4. Publica el Worker y los archivos de la app (`wrangler deploy`).
+1. Revisa la configuración (`preflight`): rechaza ID de ejemplo y, en el entorno de prueba, que apunte a la base o a los archivos de producción.
+2. Verifica los tipos y compila la app **para el entorno pedido** (producción o prueba), y confirma que la compilación quedó para ese entorno.
+3. Aplica las **migraciones** pendientes a la base de ese entorno. Las migraciones 0001–0010 sólo agregan o reacomodan estructuras y copian datos: nunca borran información. Cloudflare recuerda cuáles ya se aplicaron.
+4. Publica el Worker y los archivos de la app.
+
+Si un paso falla, no se publica nada nuevo y la versión anterior sigue en línea (`scripts/deploy.mjs`).
 
 La primera vez Wrangler puede pedir que elijas un subdominio `workers.dev` para la cuenta. La app queda en `https://padel-time.<subdominio>.workers.dev`.
 
@@ -112,15 +114,9 @@ Pide la contraseña sin mostrarla (mínimo 10 caracteres). Después:
 
 Si había rankings anteriores, importalos desde **Importar rankings** (ver el manual de operación) y recién después pegá las direcciones públicas en Google Sites, siguiendo `docs/PUBLICACION.md`.
 
-## 8. Dominio propio (opcional, también gratis)
+## 8. Dominio propio padeltime.com.ar
 
-La dirección `workers.dev` funciona sin costo. Si se quiere algo como `rankings.padeltime.com.ar`:
-
-- El dominio tiene que estar gestionado por Cloudflare (los DNS se pueden mover sin costo).
-- Se agrega desde el panel de Cloudflare: *Workers & Pages → padel-time → Settings → Domains & Routes → Add → Custom domain*.
-- **No lo hice ni lo hago sin tu autorización:** implica cambiar la configuración DNS del dominio de Padel Time.
-
-Con dominio propio, la caché de las páginas públicas también se aprovecha en la red de Cloudflare.
+Paso a paso, verificación y vuelta atrás en [`DOMINIO.md`](DOMINIO.md). **No se hace sin tu autorización:** implica cambiar los DNS del dominio de Padel Time.
 
 ## 9. Actualizar a una versión nueva
 
@@ -141,16 +137,58 @@ El código vuelve atrás pero la base no. Por eso cada migración es compatible 
 
 ## 10. Costos y límites
 
-Uso esperado con 2–3 organizadores y visitas públicas moderadas (detalle en el README, sección *Límites del plan gratuito*):
+Detalle actualizado, con los límites vigentes del plan gratuito, en [`COSTOS.md`](COSTOS.md).
 
-| Recurso | Límite gratis | Uso estimado |
-|---|---|---|
-| Solicitudes al Worker | 100.000 por día | Unos cientos por día de organizadores, más una por cada visita a un ranking público. |
-| Archivos de la app | Ilimitados | No consumen solicitudes. |
-| D1: lecturas | 5 millones de filas por día | Muy por debajo. |
-| D1: escrituras | 100.000 filas por día | Muy por debajo. Una acreditación de 32 jugadores escribe unas 40 filas. |
-| D1: almacenamiento | 500 MB por base (5 GB por cuenta) | Años de datos ocupan pocos MB. |
-| Tareas programadas | 5 por cuenta | Se usa 1. |
-| Time Travel (recuperación) | 7 días | Incluido. |
+## 11. Recuperar el servicio si un despliegue falla
 
-Nada de esto genera cargos. Si un día se superara el límite de solicitudes (por ejemplo, por un pico de visitas públicas), la app y los rankings dejan de responder hasta las 21:00 de Argentina y se recuperan solos.
+| Problema | Qué hacer |
+|---|---|
+| `npm run deploy` falla **antes** de publicar (preflight, build o tipos) | No se publicó nada: la versión anterior sigue en línea. Corregí el error y repetí. |
+| Falla al aplicar migraciones | Cloudflare aplica cada migración en una transacción: la que falló no deja cambios a medias y la versión anterior sigue funcionando con la base. Revisá el mensaje y repetí. |
+| La versión nueva se publicó pero anda mal | `npx wrangler rollback` vuelve al código anterior en segundos. Las migraciones sólo agregan estructuras, así que el código anterior funciona con la base nueva. |
+| Se dañaron datos (por ejemplo, una importación equivocada) | Primero, revertirla desde la app (importaciones y acreditaciones se revierten). Si no alcanza: **Time Travel** de D1, últimos 7 días (`docs/RESPALDO.md`, caso B). |
+| Se perdieron archivos de la web (fotos o PDF) | Restaurar el último `.zip` de multimedia con `node scripts/restore-media.mjs` (`docs/RESPALDO.md`). |
+| Cloudflare caído | Esperar. Los datos no se pierden. Ver `docs/RESPALDO.md`, "Ante una falla de Cloudflare". |
+| El dominio no carga después del cambio de DNS | Volver atrás según `docs/DOMINIO.md`, paso 6: la web anterior de Google Sites sigue intacta. |
+
+**Regla de oro antes de cada despliegue:** descargar el respaldo (`.sql` y multimedia `.zip`) y probar primero en el entorno de prueba.
+
+## 12. Entorno de prueba independiente
+
+Mismo código, **otro Worker, otra base y otro espacio de archivos**:
+
+- dirección `https://padel-time-prueba.<subdominio>.workers.dev`;
+- franja visible «Entorno de prueba · Datos de demostración»;
+- `robots.txt` bloquea todo y las páginas no se indexan.
+
+Los datos de demostración nunca se mezclan con los reales. El control previo (`npm run preflight:prueba`) rechaza el despliegue si el entorno de prueba apunta a la base o a los archivos de producción.
+
+```bash
+npx wrangler d1 create padel-time-prueba
+```
+
+```bash
+npx wrangler kv namespace create MEDIA --env prueba
+```
+
+Pegá los dos ID en `wrangler.jsonc`, sección `env.prueba`, en lugar de `11111111…`. Después:
+
+```bash
+npm run deploy:prueba
+```
+
+```bash
+npm run db:seed:prueba
+```
+
+```bash
+npm run user:create -- --username admin --name "Prueba" --remote --env prueba
+```
+
+`db:seed:prueba` carga los datos de demostración (jugadores, torneos y rankings ficticios). Para verificar la web publicada:
+
+```bash
+npm run check:links -- https://padel-time-prueba.<subdominio>.workers.dev --legacy
+```
+
+Para descartar el entorno de prueba, borrá el Worker `padel-time-prueba`, la base `padel-time-prueba` y su espacio KV desde el panel de Cloudflare. Producción no se ve afectada.

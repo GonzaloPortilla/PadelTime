@@ -21,6 +21,7 @@ const triggers = await env.DB.prepare("SELECT name, sql FROM sqlite_master WHERE
 const templates = await env.DB.prepare("SELECT * FROM scoring_templates").all();
 const templateStages = await env.DB.prepare("SELECT * FROM scoring_template_stages").all();
 const settings = await env.DB.prepare("SELECT * FROM app_settings").all();
+const redirects = await env.DB.prepare("SELECT * FROM site_redirects").all();
 
 function restoreStmt(table: string, rows: Record<string, unknown>[]) {
   return rows.map((r) => {
@@ -41,11 +42,13 @@ beforeEach(async () => {
     env.DB.prepare("DELETE FROM scoring_template_stages"),
     env.DB.prepare("DELETE FROM scoring_templates"),
     env.DB.prepare("DELETE FROM app_settings"),
+    env.DB.prepare("DELETE FROM site_redirects"),
     env.DB.prepare("DELETE FROM sqlite_sequence"),
     ...triggers.results.map((t) => env.DB.prepare(t.sql)),
     ...restoreStmt("scoring_templates", templates.results as Record<string, unknown>[]),
     ...restoreStmt("scoring_template_stages", templateStages.results as Record<string, unknown>[]),
     ...restoreStmt("app_settings", settings.results as Record<string, unknown>[]),
+    ...restoreStmt("site_redirects", redirects.results as Record<string, unknown>[]),
     // La vista pública guarda páginas en memoria según la versión: cada test arranca con una versión nueva
     // (en producción la versión sólo crece, así que nunca se repite).
     // Saltos amplios: cada test arranca con una versión pública que ningún test anterior pudo alcanzar

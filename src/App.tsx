@@ -8,6 +8,7 @@ import { PlayersPage } from "@/pages/PlayersPage";
 import { CategoriesPage } from "@/pages/CategoriesPage";
 import { SeasonsPage } from "@/pages/SeasonsPage";
 import { TournamentsPage } from "@/pages/TournamentsPage";
+import { RedirectsPage } from "@/pages/web/RedirectsPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 
@@ -74,6 +75,7 @@ export function App() {
         <Route path="web/novedades" element={<PostsPage />} />
         <Route path="web/novedades/:id" element={<PostEditorPage />} />
         <Route path="web/multimedia" element={<MediaLibraryPage />} />
+        <Route path="web/redirecciones" element={<RedirectsPage />} />
         <Route path="web/patrocinadores" element={<SponsorsPage />} />
         <Route path="web/calendario" element={<EventsPage />} />
         <Route path="web/datos" element={<SiteDataPage />} />

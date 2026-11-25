@@ -17,10 +17,10 @@ import {
 } from "./site-data";
 import {
   calendarPage, contactPage, contentPage, eventsList, homePage, newsListPage, newsPage, prizesList, sideLinks,
-  TOURNAMENT_TABS, tournamentsPage, type RenderOpts, type TournamentTab,
+  TOURNAMENT_TABS, tournamentsPage, type RenderOpts, type TournamentTab, inCalendarRange,
 } from "./site-pages";
 
-export const RENDER_VERSION = "f9.2";
+export const RENDER_VERSION = "f11.2";
 
 export function makeCtx(settings: PublicSettings, url: URL, opts: { embed?: boolean; preview?: boolean } = {}): PageCtx {
   const embed = !!opts.embed;
@@ -105,7 +105,7 @@ export async function tournamentsView(db: D1Database, ctx: PageCtx, settings: Pu
 }
 
 export async function calendarView(db: D1Database, ctx: PageCtx, settings: PublicSettings, page: SitePage | null, req: string): Promise<string> {
-  const month = /^(20\d{2})-(0[1-9]|1[0-2])$/.test(req) ? req : ctx.today.slice(0, 7);
+  const month = /^(20\d{2})-(0[1-9]|1[0-2])$/.test(req) && inCalendarRange(ctx, req) ? req : ctx.today.slice(0, 7);
   const [y, m] = month.split("-").map(Number) as [number, number];
   const first = `${month}-01`;
   const last = `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;

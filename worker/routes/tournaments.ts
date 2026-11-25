@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { tournamentListQuerySchema, tournamentSchema, tournamentStatusSchema } from "@shared/schemas";
+import { resultFilesSchema, tournamentListQuerySchema, tournamentSchema, tournamentStatusSchema } from "@shared/schemas";
 import {
   TOURNAMENT_STATUS_LABEL,
   TOURNAMENT_TRANSITIONS,
@@ -43,13 +43,14 @@ interface Row {
   prize_info: string | null;
   event_id: number | null;
   event_name: string | null;
+  result_files: string;
 }
 
 export const TOURNAMENT_SELECT = `
   SELECT t.id, t.season_id, s.name AS season_name, s.status AS season_status, t.name, t.type, t.category_id,
          c.name AS category_name, c.gender, t.division_id, d.name AS division_name, t.start_date, t.end_date,
          t.status, t.venue, t.notes, t.public_visible, t.featured, t.registration_open, t.series, t.public_description, t.prize_info,
-         t.event_id, (SELECT e.name FROM tournament_events e WHERE e.id = t.event_id) AS event_name,
+         t.event_id, (SELECT e.name FROM tournament_events e WHERE e.id = t.event_id) AS event_name, t.result_files,
          (SELECT COUNT(*) FROM tournament_teams tt WHERE tt.tournament_id = t.id) AS team_count,
          (SELECT cr.version FROM tournament_credits cr WHERE cr.tournament_id = t.id AND cr.status = 'vigente') AS credited_version
     FROM tournaments t
@@ -84,7 +85,17 @@ export const mapTournament = (r: Row): Tournament => ({
   prizeInfo: r.prize_info,
   eventId: r.event_id,
   eventName: r.event_name,
+  resultFiles: parseResultFiles(r.result_files),
 });
+
+export function parseResultFiles(raw: string | null | undefined): import("@shared/types").ResultFile[] {
+  try {
+    const v = JSON.parse(raw ?? "[]");
+    return Array.isArray(v) ? v.filter((f) => f && typeof f.mediaId === "string" && typeof f.label === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 async function getTournament(db: D1Database, id: number): Promise<Tournament> {
   const row = await db.prepare(`${TOURNAMENT_SELECT} WHERE t.id = ?`).bind(id).first<Row>();
@@ -301,4 +312,26 @@ tournamentRoutes.delete("/:id", async (c) => {
     auditStmt(db, c.get("user").id, "eliminar", "torneo", id, `Eliminó la categoría ${current.categoryName} del torneo ${current.name}`),
   ]);
   return c.json({ ok: true });
+});
+
+/**
+ * Archivos de resultados de una categoría (fase 11): imágenes o PDF de la biblioteca, para los cuadros
+ * históricos que sólo existen como imagen. No modifican puntos ni resultados; se pueden cargar también en
+ * torneos de temporadas cerradas (son material de archivo).
+ */
+tournamentRoutes.put("/:id/files", async (c) => {
+  const id = parseId(c.req.param("id"), "El torneo");
+  const { files } = await parseBody(c, resultFilesSchema);
+  const db = c.env.DB;
+  const current = await getTournament(db, id);
+  if (files.length) {
+    const { results } = await db.prepare("SELECT id FROM media WHERE id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(files.map((f) => f.mediaId))).all<{ id: string }>();
+    const known = new Set(results.map((r) => r.id));
+    if (files.some((f) => !known.has(f.mediaId))) throw badRequest("Uno de los archivos no existe en la biblioteca");
+  }
+  await db.batch([
+    db.prepare("UPDATE tournaments SET result_files = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(files), new Date().toISOString(), id),
+    auditStmt(db, c.get("user").id, "editar", "torneo", id, `${current.name} (${current.categoryName}): ${files.length} archivo(s) de resultados`),
+  ]);
+  return c.json({ item: await getTournament(db, id) });
 });

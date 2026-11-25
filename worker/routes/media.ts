@@ -30,12 +30,13 @@ export const mapMedia = (r: MediaRow) => ({
 
 /** Dónde se usa cada archivo (páginas, novedades, patrocinadores, foto de la sede), incluso en borradores. */
 export async function mediaUsage(db: D1Database): Promise<Map<string, string[]>> {
-  const [pages, posts, sponsors, settings, media] = await db.batch([
+  const [pages, posts, sponsors, settings, media, tournaments] = await db.batch([
     db.prepare("SELECT title, blocks, COALESCE(draft, '') AS draft FROM site_pages"),
     db.prepare("SELECT title, blocks, COALESCE(draft, '') AS draft, COALESCE(cover_media_id, '') AS cover FROM site_posts"),
     db.prepare("SELECT name, media_id FROM site_sponsors"),
     db.prepare("SELECT value FROM app_settings WHERE key = 'site_venue_media_id'"),
     db.prepare("SELECT id FROM media"),
+    db.prepare("SELECT t.name, c.name AS category, t.result_files FROM tournaments t JOIN categories c ON c.id = t.category_id WHERE t.result_files <> '[]'"),
   ]);
   const usage = new Map<string, string[]>();
   const texts: { label: string; text: string }[] = [
@@ -43,6 +44,7 @@ export async function mediaUsage(db: D1Database): Promise<Map<string, string[]>>
     ...(posts!.results as { title: string; blocks: string; draft: string; cover: string }[]).map((p) => ({ label: `Novedad: ${p.title}`, text: p.blocks + p.draft + p.cover })),
     ...(sponsors!.results as { name: string; media_id: string }[]).map((s) => ({ label: `Patrocinador: ${s.name}`, text: s.media_id })),
     ...(settings!.results as { value: string }[]).map((s) => ({ label: "Datos de la web: foto de la sede", text: s.value })),
+    ...(tournaments!.results as { name: string; category: string; result_files: string }[]).map((t) => ({ label: `Torneo: ${t.name} (${t.category})`, text: t.result_files })),
   ];
   for (const { id } of media!.results as { id: string }[]) {
     const where = texts.filter((t) => t.text.includes(id)).map((t) => t.label);
@@ -138,5 +140,8 @@ mediaRoutes.delete("/:id", async (c) => {
     auditStmt(db, user.id, "eliminar", "multimedia", null, `Eliminó el archivo ${row.filename}`),
   ]);
   await mediaStore(c.env).delete(id);
+  // Se purga la copia en la caché de Cloudflare (dominio propio) para que deje de verse enseguida.
+  const cache = typeof caches !== "undefined" ? (caches as unknown as { default?: Cache }).default : undefined;
+  await cache?.delete(new Request(`${new URL(c.req.url).origin}/media/${id}`)).catch(() => false);
   return c.json({ ok: true });
 });

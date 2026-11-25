@@ -23,6 +23,7 @@ import { cmsRoutes } from "./routes/cms";
 import { mediaRoutes } from "./routes/media";
 import { fixtureRoutes } from "./routes/fixtures";
 import { eventRoutes } from "./routes/events";
+import { redirectRoutes } from "./routes/redirects";
 
 export const app = new Hono<AppEnv>().basePath("/api");
 
@@ -36,6 +37,7 @@ app.use("*", async (c, next) => {
   c.header("X-Content-Type-Options", "nosniff");
   c.header("X-Frame-Options", "DENY");
   c.header("Referrer-Policy", "same-origin");
+  if (!c.res.headers.get("X-Robots-Tag")) c.header("X-Robots-Tag", "noindex, nofollow");
   if (new URL(c.req.url).protocol === "https:") c.header("Strict-Transport-Security", "max-age=31536000");
 });
 
@@ -80,6 +82,7 @@ app.route("/tournaments", importRoutes);
 app.route("/tournaments", fixtureRoutes);
 app.route("/tournaments", tournamentRoutes);
 app.route("/events", eventRoutes);
+app.route("/redirects", redirectRoutes);
 app.route("/teams", teamRoutes);
 app.route("/scoring-templates", templateRoutes);
 app.route("/rankings", rankingRoutes);

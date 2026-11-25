@@ -8,6 +8,7 @@ interface __BaseEnv_Env {
 	SESSION_TTL_DAYS: string;
 	PBKDF2_ITERATIONS: string;
 	PUBLIC_FRAME_ANCESTORS: string;
+	ENVIRONMENT?: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

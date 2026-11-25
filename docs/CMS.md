@@ -1,4 +1,4 @@
-# Gestor de contenidos (Fase 8)
+# Manual de administración de contenidos (gestor de contenidos)
 
 Los organizadores modifican toda la información de la web pública desde el panel (**Contenidos web**), con formularios y bloques, sin tocar código.
 
@@ -29,6 +29,23 @@ Los datos deportivos (torneos, jugadores, resultados, rankings) **no** se duplic
 | Banner principal, Sección automática | Sólo en Inicio. |
 
 Cada bloque se puede **subir, bajar, ocultar** (sin borrarlo) o **quitar**.
+
+### Archivos de resultados de un torneo (Fase 11)
+
+En cada categoría de un torneo: **Resumen → Archivos de resultados**. Ahí se suben imágenes o PDF de fixtures, tablas o copas que sólo existen como archivo, por ejemplo los torneos de la web anterior.
+
+- Se ponen en orden y con título.
+- La página del torneo los muestra en "Resultados (archivo)".
+- No cambian puntos ni resultados.
+- Mientras un archivo se use acá, no se puede borrar de la biblioteca.
+
+### Redirecciones (Fase 11)
+
+En **Contenidos web → Redirecciones** (sólo administradores) se ven y editan las direcciones de la web anterior (Google Sites) y a dónde llevan en la web nueva, con redirección 301.
+
+- Al cargar un torneo histórico, apuntá su dirección vieja (por ejemplo `/qatar-major-2000`) a la página nueva del torneo, copiando la dirección desde la barra del navegador.
+- Con "Incluir subpáginas" también redirigen `/qatar-major-2000/c5/fixture` y similares.
+- Sólo se aceptan direcciones de esta web: nunca sitios externos.
 
 ## Ciclo de publicación
 

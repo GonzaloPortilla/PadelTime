@@ -140,7 +140,13 @@ export interface Tournament {
   /** Evento general al que pertenece esta categoría (Fase 9). */
   eventId: number | null;
   eventName: string | null;
+  /** Archivos de resultados (imágenes o PDF): cuadros históricos que sólo existen como imagen. */
+  resultFiles: ResultFile[];
 }
+
+export interface ResultFile { mediaId: string; label: string }
+
+export interface SiteRedirect { id: number; fromPath: string; toPath: string; prefix: boolean; note: string | null; updatedAt: string }
 
 export interface ActivityItem {
   id: number;

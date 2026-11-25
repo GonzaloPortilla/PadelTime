@@ -9,7 +9,7 @@ import { isSchemaOutdated, SCHEMA_OUTDATED_MESSAGE } from "../lib/errors";
 import { loadPlayer, loadRanking, rankingRefs, resolveSeason, searchPlayers, visibleSeasons } from "./data";
 import type { PageCtx } from "./layout";
 import { messagePage, playerPage, rankingPage, rankingPath, searchPage } from "./pages";
-import { eventTournaments, loadPage, loadPost, loadPublicFixture, postSlugs, publicTournament, publicTournaments, tournamentTeamsAndResults } from "./site-data";
+import { eventTournaments, findRedirect, loadMedia, loadPage, loadPost, loadPublicFixture, postSlugs, publicTournament, publicTournaments, tournamentTeamsAndResults } from "./site-data";
 import { notFoundPage, robotsTxt, sitemapXml, tournamentPage } from "./site-pages";
 import {
   calendarView, contactView, contentView, homeView, makeCtx, newsListView, newsView, rankingsIndexView, RENDER_VERSION, tournamentsView,
@@ -39,8 +39,12 @@ function securityHeaders(env: Env): Record<string, string> {
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     "Strict-Transport-Security": "max-age=31536000",
+    // Entorno de prueba: nunca se indexa (los datos son de demostración).
+    ...(isTestEnv(env) ? { "X-Robots-Tag": "noindex, nofollow" } : {}),
   };
 }
+
+export const isTestEnv = (env: Env) => env.ENVIRONMENT === "prueba";
 
 interface Rendered { body: string | Uint8Array; status: number; type: string; disposition?: string; location?: string }
 
@@ -73,7 +77,7 @@ async function serve(c: Context<PublicEnv>, render: (ctx: PageCtx, settings: Pub
 
   if (c.req.header("if-none-match") === etag) return new Response(null, { status: 304, headers: baseHeaders });
 
-  const key = `${url.pathname}?${[...url.searchParams].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&")}#${etag}`;
+  const key = `${isTestEnv(c.env) ? "prueba:" : ""}${url.pathname}?${[...url.searchParams].sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&")}#${etag}`;
   const toResponse = (r: Rendered) => {
     if (r.location) return new Response(null, { status: r.status, headers: { ...baseHeaders, Location: r.location } });
     return new Response(typeof r.body === "string" ? r.body : r.body.slice(), {
@@ -103,7 +107,7 @@ async function serve(c: Context<PublicEnv>, render: (ctx: PageCtx, settings: Pub
   }
 
   const settings = await loadPublicSettings(db);
-  const ctx: PageCtx = makeCtx(settings, url, { embed });
+  const ctx: PageCtx = { ...makeCtx(settings, url, { embed }), testEnv: isTestEnv(c.env) };
   const rendered = await render(ctx, settings);
   // Sólo se guardan respuestas exitosas, redirecciones o 404 (no errores transitorios).
   if (rendered.status === 200 || rendered.status === 404 || rendered.status === 301) {
@@ -160,7 +164,8 @@ publicApp.get("/torneos/:slug", (c) =>
       t.type === "largo" ? loadPublicFixture(c.env.DB, t.id) : Promise.resolve(null),
       t.eventId ? eventTournaments(c.env.DB, t.eventId, genders(settings)) : Promise.resolve([]),
     ]);
-    return html(tournamentPage(ctx, t, data, { fixture, siblings }));
+    const files = t.resultFiles.length ? await loadMedia(c.env.DB, t.resultFiles.map((f) => f.mediaId)) : new Map();
+    return html(tournamentPage(ctx, t, data, { fixture, siblings, files }));
   }),
 );
 
@@ -266,7 +271,7 @@ publicApp.get("/publico/jugadores", playersSearch);
 publicApp.get("/publico/jugador/:code", playerDetail);
 
 // ─────────────────────────── Buscadores ───────────────────────────
-publicApp.get("/robots.txt", (c) => c.text(robotsTxt(new URL(c.req.url).origin), 200, { "Cache-Control": "public, max-age=3600" }));
+publicApp.get("/robots.txt", (c) => c.text(isTestEnv(c.env) ? "User-agent: *\nDisallow: /\n" : robotsTxt(new URL(c.req.url).origin), 200, { "Cache-Control": "public, max-age=3600" }));
 
 publicApp.get("/sitemap.xml", (c) =>
   serve(c, async (ctx, settings) => {
@@ -283,4 +288,10 @@ publicApp.get("/sitemap.xml", (c) =>
   }),
 );
 
-publicApp.notFound((c) => serve(c, async (ctx) => html(notFoundPage(ctx), 404)));
+publicApp.notFound((c) =>
+  serve(c, async (ctx) => {
+    // Direcciones de la web anterior (Google Sites): 301 a su equivalente en la web nueva.
+    const target = await findRedirect(c.env.DB, new URL(c.req.url).pathname);
+    return target ? redirect(target) : html(notFoundPage(ctx), 404);
+  }),
+);
