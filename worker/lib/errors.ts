@@ -59,6 +59,11 @@ function fromSqlite(err: Error): HttpError | null {
   return null;
 }
 
+/** La base no tiene aplicadas las migraciones que el código necesita (faltan tablas o columnas). */
+export const isSchemaOutdated = (err: unknown) => /no such (table|column)|has no column named/i.test(err instanceof Error ? err.message : String(err));
+export const SCHEMA_OUTDATED_MESSAGE =
+  "La base de datos no está actualizada: faltan aplicar migraciones. En la compu, ejecutá «npm run db:migrate:local»; en producción se aplican solas con «npm run deploy».";
+
 export function handleError(err: Error, c: Context): Response {
   let httpError: HttpError;
   if (err instanceof HttpError) httpError = err;
@@ -66,7 +71,10 @@ export function handleError(err: Error, c: Context): Response {
   else {
     const mapped = fromSqlite(err);
     if (mapped) httpError = mapped;
-    else {
+    else if (isSchemaOutdated(err)) {
+      console.error("Base sin migrar", err);
+      httpError = new HttpError(500, "base_desactualizada", SCHEMA_OUTDATED_MESSAGE);
+    } else {
       console.error("Error no controlado", err);
       httpError = new HttpError(500, "error_interno", "Ocurrió un error inesperado. Intentá nuevamente.");
     }

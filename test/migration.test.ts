@@ -57,3 +57,13 @@ describe("migración 0008: torneos con varias categorías", () => {
     await expect(db.prepare("INSERT INTO tournaments (season_id, name, type, category_id, start_date, end_date, event_id) VALUES (1, 'X', 'largo', 1, '2026-06-01', '2026-06-02', 5)").run()).rejects.toThrow(/UNIQUE/);
   });
 });
+
+describe("base sin migrar", () => {
+  it("detecta tablas o columnas faltantes para avisar que hay que aplicar migraciones", async () => {
+    const { isSchemaOutdated, SCHEMA_OUTDATED_MESSAGE } = await import("../worker/lib/errors");
+    expect(isSchemaOutdated(new Error("D1_ERROR: no such table: tournament_events: SQLITE_ERROR"))).toBe(true);
+    expect(isSchemaOutdated(new Error("D1_ERROR: no such column: t.event_id"))).toBe(true);
+    expect(isSchemaOutdated(new Error("UNIQUE constraint failed"))).toBe(false);
+    expect(SCHEMA_OUTDATED_MESSAGE).toContain("npm run db:migrate:local");
+  });
+});

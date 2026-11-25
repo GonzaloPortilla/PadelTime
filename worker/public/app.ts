@@ -5,6 +5,7 @@ import { CSV_MIME, XLSX_MIME, slug, toCsv, toXlsx } from "@shared/export";
 import { RANKING_HEADER, rankingRows, rankingSheet } from "@shared/rankingExport";
 import { tournamentIdFromSlug, tournamentPath } from "@shared/site";
 import { loadPublicSettings, publicVersion, type PublicSettings } from "../lib/settings";
+import { isSchemaOutdated, SCHEMA_OUTDATED_MESSAGE } from "../lib/errors";
 import { loadPlayer, loadRanking, rankingRefs, resolveSeason, searchPlayers, visibleSeasons } from "./data";
 import type { PageCtx } from "./layout";
 import { messagePage, playerPage, rankingPage, rankingPath, searchPage } from "./pages";
@@ -131,7 +132,9 @@ export const publicApp = new Hono<PublicEnv>();
 
 publicApp.onError((err, c) => {
   console.error("Error en la web pública", err);
-  return c.html("<!doctype html><meta charset=utf-8><title>Error</title><p style='font-family:system-ui;padding:24px'>No pudimos cargar la página. Probá de nuevo en unos minutos.</p>", 500, securityHeaders(c.env));
+  // Si falta aplicar migraciones, se dice explícitamente (no expone datos: sólo el paso a seguir).
+  const text = isSchemaOutdated(err) ? SCHEMA_OUTDATED_MESSAGE : "No pudimos cargar la página. Probá de nuevo en unos minutos.";
+  return c.html(`<!doctype html><meta charset=utf-8><title>Error</title><p style='font-family:system-ui;padding:24px'>${text.replace(/[<>&]/g, "")}</p>`, 500, securityHeaders(c.env));
 });
 
 const genders = (s: PublicSettings) => s.site.activeGenders;
